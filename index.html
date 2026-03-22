@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Household Budget</title>
+  <meta name="description" content="Mobile-first household budget app with Supabase auth, realtime sync, and shared transactions." />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root {
+      --bg: #0b1220;
+      --panel: #131c31;
+      --panel-2: #1a2540;
+      --line: #293655;
+      --text: #eef4ff;
+      --muted: #9fb0d1;
+      --accent: #67e8f9;
+      --accent-2: #22c55e;
+      --danger: #fb7185;
+      --warn: #fbbf24;
+      --shadow: 0 18px 40px rgba(0,0,0,.28);
+      --radius: 18px;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text); font-family: Arial, Helvetica, sans-serif; }
+    body { min-height: 100vh; }
+    button, input, select { font: inherit; }
+    .wrap { width: min(100%, 860px); margin: 0 auto; padding: 14px; }
+    .hero {
+      background: linear-gradient(180deg, rgba(103,232,249,.14), rgba(34,197,94,.08));
+      border: 1px solid var(--line);
+      border-radius: 24px;
+      padding: 18px;
+      box-shadow: var(--shadow);
+      margin-bottom: 14px;
+    }
+    .hero h1 { margin: 0 0 6px; font-size: 1.8rem; }
+    .hero p { margin: 0; color: var(--muted); line-height: 1.4; }
+    .statusbar {
+      display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px;
+    }
+    .pill {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 8px 12px; border-radius: 999px;
+      background: rgba(255,255,255,.04); border: 1px solid var(--line);
+      color: var(--muted); font-size: .92rem;
+    }
+    .grid { display: grid; gap: 14px; }
+    .grid-2 { grid-template-columns: 1fr; }
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 14px;
+      box-shadow: var(--shadow);
+    }
+    .card h2, .card h3 { margin: 0 0 10px; }
+    .sub { color: var(--muted); font-size: .92rem; }
+    .row { display: grid; gap: 10px; margin-bottom: 10px; }
+    .row-2, .row-3, .row-4 { grid-template-columns: 1fr; }
+    label { display: block; font-size: .92rem; margin-bottom: 6px; color: var(--muted); }
+    input, select {
+      width: 100%; padding: 12px 12px; border-radius: 12px;
+      border: 1px solid var(--line); background: var(--panel-2); color: var(--text);
+      outline: none;
+    }
+    input:focus, select:focus { border-color: var(--accent); }
+    .actions { display: flex; gap: 10px; flex-wrap: wrap; }
+    .btn {
+      border: 0; cursor: pointer; padding: 12px 14px; border-radius: 12px;
+      background: var(--accent); color: #06202b; font-weight: 700;
+    }
+    .btn.secondary { background: #273657; color: var(--text); border: 1px solid var(--line); }
+    .btn.good { background: var(--accent-2); color: #05250f; }
+    .btn.warn { background: var(--warn); color: #2d2204; }
+    .btn.danger { background: var(--danger); color: #3a0913; }
+    .totals { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+    .metric {
+      background: var(--panel-2); border: 1px solid var(--line); border-radius: 14px; padding: 12px;
+    }
+    .metric .k { font-size: .85rem; color: var(--muted); }
+    .metric .v { font-size: 1.2rem; font-weight: 700; margin-top: 4px; }
+    .list { display: grid; gap: 10px; }
+    .txn {
+      border: 1px solid var(--line); background: var(--panel-2); border-radius: 14px; padding: 12px;
+      display: grid; gap: 8px;
+    }
+    .txn-top { display: flex; justify-content: space-between; gap: 10px; align-items: start; }
+    .txn-title { font-weight: 700; }
+    .txn-meta { color: var(--muted); font-size: .9rem; }
+    .amount.income { color: #86efac; font-weight: 800; }
+    .amount.expense { color: #fda4af; font-weight: 800; }
+    .empty { color: var(--muted); text-align: center; padding: 24px 12px; }
+    .hidden { display: none !important; }
+    .footer-note { color: var(--muted); font-size: .85rem; margin-top: 10px; }
+    .banner {
+      margin-bottom: 12px; padding: 12px; border-radius: 12px; border: 1px solid var(--line);
+      background: rgba(255,255,255,.04); color: var(--text);
+    }
+    .error { border-color: rgba(251,113,133,.45); background: rgba(251,113,133,.08); }
+    .ok { border-color: rgba(34,197,94,.4); background: rgba(34,197,94,.08); }
+
+    @media (min-width: 760px) {
+      .grid-2 { grid-template-columns: 1.15fr .85fr; }
+      .row-2 { grid-template-columns: repeat(2, 1fr); }
+      .row-3 { grid-template-columns: 1.1fr .9fr .9fr; }
+      .row-4 { grid-template-columns: repeat(4, 1fr); }
+      .totals { grid-template-columns: repeat(4, 1fr); }
+      .hero { padding: 22px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <section class="hero">
+      <h1>Household Budget</h1>
+      <p>Shared budget tracking for two humans trying to survive groceries, bills, and the occasional financial jump scare.</p>
+      <div class="statusbar">
+        <div class="pill">📱 Mobile-first</div>
+        <div class="pill">🔐 Supabase login</div>
+        <div class="pill">⚡ Live sync</div>
+      </div>
+    </section>
+
+    <div id="banner" class="banner hidden"></div>
+
+    <section id="authCard" class="card">
+      <h2>Login / Sign Up</h2>
+      <p class="sub">Use the two approved household accounts. This app syncs live across devices.</p>
+      <div class="row row-2">
+        <div>
+          <label for="authEmail">Email</label>
+          <input id="authEmail" type="email" placeholder="name@example.com" autocomplete="email" />
+        </div>
+        <div>
+          <label for="authPassword">Password</label>
+          <input id="authPassword" type="password" placeholder="Password" autocomplete="current-password" />
+        </div>
+      </div>
+      <div class="actions">
+        <button class="btn" id="loginBtn">Log In</button>
+        <button class="btn secondary" id="signupBtn">Sign Up</button>
+      </div>
+      <div class="footer-note">Create exactly two accounts in Supabase Auth and invite the second user like civilized adults instead of sharing one password like raccoons.</div>
+    </section>
+
+    <section id="appShell" class="grid grid-2 hidden">
+      <div class="grid">
+        <div class="card">
+          <div class="actions" style="justify-content:space-between; align-items:center; margin-bottom:10px;">
+            <div>
+              <h2 style="margin:0;">Dashboard</h2>
+              <div class="sub" id="whoami">Signed in</div>
+            </div>
+            <button class="btn secondary" id="logoutBtn">Log Out</button>
+          </div>
+          <div class="totals">
+            <div class="metric"><div class="k">Income</div><div class="v" id="incomeTotal">$0.00</div></div>
+            <div class="metric"><div class="k">Expenses</div><div class="v" id="expenseTotal">$0.00</div></div>
+            <div class="metric"><div class="k">Net</div><div class="v" id="netTotal">$0.00</div></div>
+            <div class="metric"><div class="k">This Month</div><div class="v" id="monthTotal">$0.00</div></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>Add Transaction</h2>
+          <div class="row row-2">
+            <div>
+              <label for="txnDate">Date</label>
+              <input id="txnDate" type="date" />
+            </div>
+            <div>
+              <label for="txnType">Type</label>
+              <select id="txnType">
+                <option value="expense">Expense</option>
+                <option value="income">Income</option>
+              </select>
+            </div>
+          </div>
+          <div class="row row-2">
+            <div>
+              <label for="txnMerchant">Merchant / Source</label>
+              <input id="txnMerchant" type="text" placeholder="Walmart, Paycheck, Duke Energy..." />
+            </div>
+            <div>
+              <label for="txnAmount">Amount</label>
+              <input id="txnAmount" type="number" step="0.01" placeholder="0.00" />
+            </div>
+          </div>
+          <div class="row row-3">
+            <div>
+              <label for="txnCategory">Category</label>
+              <select id="txnCategory">
+                <option>Groceries</option>
+                <option>Utilities</option>
+                <option>Mortgage/Rent</option>
+                <option>Fuel</option>
+                <option>Dining</option>
+                <option>Medical</option>
+                <option>Kids</option>
+                <option>Pets</option>
+                <option>Insurance</option>
+                <option>Debt</option>
+                <option>Household</option>
+                <option>Entertainment</option>
+                <option>Income</option>
+                <option>Other</option>
+              </select>
+            </div>
+            <div>
+              <label for="txnMonth">Budget Month</label>
+              <input id="txnMonth" type="month" />
+            </div>
+            <div>
+              <label for="txnRecurring">Recurring</label>
+              <select id="txnRecurring">
+                <option value="false">No</option>
+                <option value="true">Yes</option>
+              </select>
+            </div>
+          </div>
+          <div class="actions">
+            <button class="btn good" id="saveTxnBtn">Save Transaction</button>
+            <button class="btn secondary" id="resetTxnBtn">Clear</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>Transactions</h2>
+          <div class="row row-4">
+            <div>
+              <label for="filterMonth">Filter Month</label>
+              <input id="filterMonth" type="month" />
+            </div>
+            <div>
+              <label for="filterType">Type</label>
+              <select id="filterType">
+                <option value="all">All</option>
+                <option value="expense">Expense</option>
+                <option value="income">Income</option>
+              </select>
+            </div>
+            <div>
+              <label for="filterCategory">Category</label>
+              <select id="filterCategory">
+                <option value="all">All</option>
+                <option>Groceries</option>
+                <option>Utilities</option>
+                <option>Mortgage/Rent</option>
+                <option>Fuel</option>
+                <option>Dining</option>
+                <option>Medical</option>
+                <option>Kids</option>
+                <option>Pets</option>
+                <option>Insurance</option>
+                <option>Debt</option>
+                <option>Household</option>
+                <option>Entertainment</option>
+                <option>Income</option>
+                <option>Other</option>
+              </select>
+            </div>
+            <div>
+              <label>&nbsp;</label>
+              <button class="btn secondary" id="clearFiltersBtn" style="width:100%;">Clear Filters</button>
+            </div>
+          </div>
+          <div id="txnList" class="list"></div>
+        </div>
+      </div>
+
+      <div class="grid">
+        <div class="card">
+          <h2>Monthly Budget Targets</h2>
+          <p class="sub">Set simple monthly targets. You can add more categories later without summoning accounting demons.</p>
+          <div class="row row-2">
+            <div>
+              <label for="budgetMonth">Month</label>
+              <input id="budgetMonth" type="month" />
+            </div>
+            <div>
+              <label for="budgetCategory">Category</label>
+              <select id="budgetCategory">
+                <option>Groceries</option>
+                <option>Utilities</option>
+                <option>Mortgage/Rent</option>
+                <option>Fuel</option>
+                <option>Dining</option>
+                <option>Medical</option>
+                <option>Kids</option>
+                <option>Pets</option>
+                <option>Insurance</option>
+                <option>Debt</option>
+                <option>Household</option>
+                <option>Entertainment</option>
+                <option>Other</option>
+              </select>
+            </div>
+          </div>
+          <div class="row row-2">
+            <div>
+              <label for="budgetAmount">Budget Amount</label>
+              <input id="budgetAmount" type="number" step="0.01" placeholder="0.00" />
+            </div>
+            <div style="display:flex; align-items:end;">
+              <button class="btn good" id="saveBudgetBtn" style="width:100%;">Save Target</button>
+            </div>
+          </div>
+          <div id="budgetList" class="list"></div>
+        </div>
+
+        <div class="card">
+          <h2>Setup</h2>
+          <div class="sub">Before this works, replace the two values in the script with your Supabase project URL and anon key.</div>
+          <div class="footer-note">
+            Also run the provided <strong>schema.sql</strong> in Supabase SQL editor, then turn on Realtime for the tables. That gives you cross-platform live updates instead of the usual “why is your phone showing different numbers than mine?” marriage enrichment exercise.
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const SUPABASE_URL = "PASTE_YOUR_SUPABASE_URL_HERE";
+    const SUPABASE_ANON_KEY = "PASTE_YOUR_SUPABASE_ANON_KEY_HERE";
+
+    const { createClient } = supabase;
+    const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    const el = (id) => document.getElementById(id);
+    const authCard = el('authCard');
+    const appShell = el('appShell');
+    const banner = el('banner');
+    const txnList = el('txnList');
+    const budgetList = el('budgetList');
+    let currentUser = null;
+    let transactions = [];
+    let budgets = [];
+
+    function nowMonth() {
+      const d = new Date();
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      return `${y}-${m}`;
+    }
+
+    function today() {
+      const d = new Date();
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    }
+
+    function fmtMoney(n) {
+      const v = Number(n || 0);
+      return v.toLocaleString(undefined, { style: 'currency', currency: 'USD' });
+    }
+
+    function showBanner(msg, type = 'ok') {
+      banner.textContent = msg;
+      banner.className = `banner ${type}`;
+      banner.classList.remove('hidden');
+      setTimeout(() => banner.classList.add('hidden'), 3800);
+    }
+
+    function setDefaults() {
+      el('txnDate').value = today();
+      el('txnMonth').value = nowMonth();
+      el('filterMonth').value = nowMonth();
+      el('budgetMonth').value = nowMonth();
+    }
+
+    function resetTxnForm() {
+      el('txnDate').value = today();
+      el('txnType').value = 'expense';
+      el('txnMerchant').value = '';
+      el('txnAmount').value = '';
+      el('txnCategory').value = 'Groceries';
+      el('txnMonth').value = nowMonth();
+      el('txnRecurring').value = 'false';
+    }
+
+    async function login() {
+      const email = el('authEmail').value.trim();
+      const password = el('authPassword').value;
+      const { error } = await sb.auth.signInWithPassword({ email, password });
+      if (error) return showBanner(error.message, 'error');
+      showBanner('Logged in.', 'ok');
+    }
+
+    async function signup() {
+      const email = el('authEmail').value.trim();
+      const password = el('authPassword').value;
+      const { error } = await sb.auth.signUp({ email, password });
+      if (error) return showBanner(error.message, 'error');
+      showBanner('Account created. Check email if your project requires confirmation.', 'ok');
+    }
+
+    async function logout() {
+      await sb.auth.signOut();
+    }
+
+    async function saveTransaction() {
+      const payload = {
+        txn_date: el('txnDate').value,
+        txn_type: el('txnType').value,
+        merchant: el('txnMerchant').value.trim(),
+        amount: Number(el('txnAmount').value || 0),
+        category: el('txnCategory').value,
+        budget_month: el('txnMonth').value,
+        recurring: el('txnRecurring').value === 'true',
+        created_by: currentUser?.email || null,
+      };
+      if (!payload.txn_date || !payload.merchant || !payload.amount || !payload.budget_month) {
+        return showBanner('Fill in date, merchant/source, amount, and month.', 'error');
+      }
+      const { error } = await sb.from('budget_transactions').insert(payload);
+      if (error) return showBanner(error.message, 'error');
+      resetTxnForm();
+      showBanner('Transaction saved.', 'ok');
+    }
+
+    async function deleteTransaction(id) {
+      const { error } = await sb.from('budget_transactions').delete().eq('id', id);
+      if (error) return showBanner(error.message, 'error');
+      showBanner('Transaction deleted.', 'ok');
+    }
+
+    async function saveBudget() {
+      const payload = {
+        budget_month: el('budgetMonth').value,
+        category: el('budgetCategory').value,
+        target_amount: Number(el('budgetAmount').value || 0),
+        created_by: currentUser?.email || null,
+      };
+      if (!payload.budget_month || !payload.category || !payload.target_amount) {
+        return showBanner('Fill in month, category, and amount.', 'error');
+      }
+
+      const { data: existing, error: findErr } = await sb
+        .from('budget_targets')
+        .select('id')
+        .eq('budget_month', payload.budget_month)
+        .eq('category', payload.category)
+        .maybeSingle();
+
+      if (findErr) return showBanner(findErr.message, 'error');
+
+      let error;
+      if (existing?.id) {
+        ({ error } = await sb.from('budget_targets').update({ target_amount: payload.target_amount, created_by: payload.created_by }).eq('id', existing.id));
+      } else {
+        ({ error } = await sb.from('budget_targets').insert(payload));
+      }
+      if (error) return showBanner(error.message, 'error');
+      el('budgetAmount').value = '';
+      showBanner('Budget target saved.', 'ok');
+    }
+
+    async function deleteBudget(id) {
+      const { error } = await sb.from('budget_targets').delete().eq('id', id);
+      if (error) return showBanner(error.message, 'error');
+      showBanner('Budget target deleted.', 'ok');
+    }
+
+    async function loadTransactions() {
+      const { data, error } = await sb.from('budget_transactions').select('*').order('txn_date', { ascending: false }).order('created_at', { ascending: false });
+      if (error) return showBanner(error.message, 'error');
+      transactions = data || [];
+      renderTransactions();
+      renderTotals();
+    }
+
+    async function loadBudgets() {
+      const { data, error } = await sb.from('budget_targets').select('*').order('budget_month', { ascending: false }).order('category', { ascending: true });
+      if (error) return showBanner(error.message, 'error');
+      budgets = data || [];
+      renderBudgets();
+    }
+
+    function filteredTransactions() {
+      const month = el('filterMonth').value;
+      const type = el('filterType').value;
+      const category = el('filterCategory').value;
+      return transactions.filter(t => {
+        const okMonth = !month || t.budget_month === month;
+        const okType = type === 'all' ? true : t.txn_type === type;
+        const okCategory = category === 'all' ? true : t.category === category;
+        return okMonth && okType && okCategory;
+      });
+    }
+
+    function renderTransactions() {
+      const rows = filteredTransactions();
+      if (!rows.length) {
+        txnList.innerHTML = '<div class="empty">No transactions found.</div>';
+        return;
+      }
+      txnList.innerHTML = rows.map(t => `
+        <div class="txn">
+          <div class="txn-top">
+            <div>
+              <div class="txn-title">${escapeHtml(t.merchant || '')}</div>
+              <div class="txn-meta">${escapeHtml(t.category || 'Other')} • ${escapeHtml(t.txn_date || '')} • ${escapeHtml(t.created_by || 'unknown')}</div>
+            </div>
+            <div class="amount ${t.txn_type}">${t.txn_type === 'income' ? '+' : '-'}${fmtMoney(t.amount)}</div>
+          </div>
+          <div class="actions">
+            <button class="btn danger" onclick="deleteTransaction('${t.id}')">Delete</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function renderBudgets() {
+      const month = el('budgetMonth').value || nowMonth();
+      const monthRows = budgets.filter(b => b.budget_month === month);
+      if (!monthRows.length) {
+        budgetList.innerHTML = '<div class="empty">No budget targets for this month yet.</div>';
+        return;
+      }
+      const spentByCategory = {};
+      transactions.filter(t => t.budget_month === month && t.txn_type === 'expense').forEach(t => {
+        spentByCategory[t.category] = (spentByCategory[t.category] || 0) + Number(t.amount || 0);
+      });
+      budgetList.innerHTML = monthRows.map(b => {
+        const spent = Number(spentByCategory[b.category] || 0);
+        const remaining = Number(b.target_amount || 0) - spent;
+        return `
+          <div class="txn">
+            <div class="txn-top">
+              <div>
+                <div class="txn-title">${escapeHtml(b.category)}</div>
+                <div class="txn-meta">Target ${fmtMoney(b.target_amount)} • Spent ${fmtMoney(spent)} • Remaining ${fmtMoney(remaining)}</div>
+              </div>
+              <div class="amount ${remaining >= 0 ? 'income' : 'expense'}">${fmtMoney(remaining)}</div>
+            </div>
+            <div class="actions">
+              <button class="btn danger" onclick="deleteBudget('${b.id}')">Delete</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderTotals() {
+      const month = el('filterMonth').value || nowMonth();
+      const monthRows = transactions.filter(t => t.budget_month === month);
+      const income = monthRows.filter(t => t.txn_type === 'income').reduce((s, t) => s + Number(t.amount || 0), 0);
+      const expenses = monthRows.filter(t => t.txn_type === 'expense').reduce((s, t) => s + Number(t.amount || 0), 0);
+      el('incomeTotal').textContent = fmtMoney(income);
+      el('expenseTotal').textContent = fmtMoney(expenses);
+      el('netTotal').textContent = fmtMoney(income - expenses);
+      el('monthTotal').textContent = fmtMoney(monthRows.reduce((s, t) => s + (t.txn_type === 'income' ? Number(t.amount || 0) : -Number(t.amount || 0)), 0));
+    }
+
+    function escapeHtml(str) {
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    async function refreshAll() {
+      await loadTransactions();
+      await loadBudgets();
+    }
+
+    async function setSessionUI() {
+      const { data } = await sb.auth.getUser();
+      currentUser = data?.user || null;
+      if (currentUser) {
+        authCard.classList.add('hidden');
+        appShell.classList.remove('hidden');
+        el('whoami').textContent = `Signed in as ${currentUser.email}`;
+        await refreshAll();
+      } else {
+        authCard.classList.remove('hidden');
+        appShell.classList.add('hidden');
+      }
+    }
+
+    function bindRealtime() {
+      sb.channel('budget-live')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'budget_transactions' }, async () => {
+          await loadTransactions();
+          renderBudgets();
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'budget_targets' }, async () => {
+          await loadBudgets();
+        })
+        .subscribe();
+    }
+
+    el('loginBtn').addEventListener('click', login);
+    el('signupBtn').addEventListener('click', signup);
+    el('logoutBtn').addEventListener('click', logout);
+    el('saveTxnBtn').addEventListener('click', saveTransaction);
+    el('resetTxnBtn').addEventListener('click', resetTxnForm);
+    el('saveBudgetBtn').addEventListener('click', saveBudget);
+    el('filterMonth').addEventListener('change', () => { renderTransactions(); renderTotals(); });
+    el('filterType').addEventListener('change', renderTransactions);
+    el('filterCategory').addEventListener('change', renderTransactions);
+    el('budgetMonth').addEventListener('change', renderBudgets);
+    el('clearFiltersBtn').addEventListener('click', () => {
+      el('filterMonth').value = nowMonth();
+      el('filterType').value = 'all';
+      el('filterCategory').value = 'all';
+      renderTransactions();
+      renderTotals();
+    });
+
+    sb.auth.onAuthStateChange(async () => {
+      await setSessionUI();
+    });
+
+    setDefaults();
+    resetTxnForm();
+    bindRealtime();
+    setSessionUI();
+
+    window.deleteTransaction = deleteTransaction;
+    window.deleteBudget = deleteBudget;
+  </script>
+</body>
+</html>
