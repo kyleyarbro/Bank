@@ -498,7 +498,7 @@
           <h2>Setup</h2>
           <div class="sub">This file is already pointed at your Supabase project.</div>
           <div class="footer-note">
-            If anything blows up, the error will now show in the banner instead of silently dying like a witness in a mob movie.
+            This build avoids the auth callback deadlock nonsense that was likely making login hang like a cheap shower curtain.
           </div>
         </div>
       </div>
@@ -608,17 +608,6 @@
       }
     }
 
-    async function safeAuthGetUser() {
-      try {
-        const { data, error } = await sb.auth.getUser();
-        if (error) throw error;
-        return data?.user || null;
-      } catch (err) {
-        showBanner(`Auth check failed:\n${err.message || err}`, "error", true);
-        return null;
-      }
-    }
-
     async function login() {
       try {
         setButtonBusy("loginBtn", true, "Logging In...");
@@ -630,8 +619,19 @@
           return;
         }
 
-        const { error } = await sb.auth.signInWithPassword({ email, password });
+        const { data, error } = await sb.auth.signInWithPassword({ email, password });
         if (error) throw error;
+
+        currentUser = data?.user || null;
+        isOwner = currentUser?.email === OWNER_EMAIL;
+
+        if (currentUser) {
+          authCard.classList.add("hidden");
+          appShell.classList.remove("hidden");
+          el("whoami").textContent = `Signed in as ${currentUser.email}`;
+          applyOwnerUI();
+          await refreshAll();
+        }
 
         showBanner("Logged in.", "ok");
       } catch (err) {
@@ -666,6 +666,10 @@
     async function logout() {
       try {
         await sb.auth.signOut();
+        currentUser = null;
+        isOwner = false;
+        authCard.classList.remove("hidden");
+        appShell.classList.add("hidden");
         showBanner("Logged out.", "ok");
       } catch (err) {
         showBanner(`Logout failed:\n${err.message || err}`, "error", true);
@@ -914,19 +918,26 @@
       }
     }
 
-    async function setSessionUI() {
-      currentUser = await safeAuthGetUser();
-      isOwner = currentUser?.email === OWNER_EMAIL;
+    async function restoreExistingSession() {
+      try {
+        const { data, error } = await sb.auth.getSession();
+        if (error) throw error;
 
-      if (currentUser) {
-        authCard.classList.add("hidden");
-        appShell.classList.remove("hidden");
-        el("whoami").textContent = `Signed in as ${currentUser.email}`;
-        applyOwnerUI();
-        await refreshAll();
-      } else {
-        authCard.classList.remove("hidden");
-        appShell.classList.add("hidden");
+        currentUser = data?.session?.user || null;
+        isOwner = currentUser?.email === OWNER_EMAIL;
+
+        if (currentUser) {
+          authCard.classList.add("hidden");
+          appShell.classList.remove("hidden");
+          el("whoami").textContent = `Signed in as ${currentUser.email}`;
+          applyOwnerUI();
+          await refreshAll();
+        } else {
+          authCard.classList.remove("hidden");
+          appShell.classList.add("hidden");
+        }
+      } catch (err) {
+        showBanner(`Session restore failed:\n${err.message || err}`, "error", true);
       }
     }
 
@@ -984,18 +995,30 @@
         sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         bindEvents();
+        bindRealtime();
 
-        sb.auth.onAuthStateChange(async () => {
-          await setSessionUI();
+        sb.auth.onAuthStateChange((event, session) => {
+          currentUser = session?.user || null;
+          isOwner = currentUser?.email === OWNER_EMAIL;
+
+          if (currentUser) {
+            authCard.classList.add("hidden");
+            appShell.classList.remove("hidden");
+            el("whoami").textContent = `Signed in as ${currentUser.email}`;
+            applyOwnerUI();
+            setTimeout(() => {
+              refreshAll();
+            }, 0);
+          } else {
+            authCard.classList.remove("hidden");
+            appShell.classList.add("hidden");
+          }
         });
 
         setDefaults();
         resetTxnForm();
         resetBudgetForm();
-        bindRealtime();
-        await setSessionUI();
-
-        showBanner("App loaded.", "ok");
+        await restoreExistingSession();
       } catch (err) {
         showBanner(`Startup failed:\n${err.message || err}`, "error", true);
       }
