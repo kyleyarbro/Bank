@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Household Budget</title>
-  <meta name="description" content="Mobile-first household budget app with Supabase auth, realtime sync, and shared transactions." />
+  <meta name="description" content="Mobile-first household budget app with Supabase auth, realtime sync, recurring bills, and shared transactions." />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     :root {
@@ -31,10 +31,10 @@
       font-family: Arial, Helvetica, sans-serif;
     }
     body { min-height: 100vh; }
-    button, input, select { font: inherit; }
+    button, input, select, textarea { font: inherit; }
 
     .wrap {
-      width: min(100%, 860px);
+      width: min(100%, 960px);
       margin: 0 auto;
       padding: 14px;
     }
@@ -111,7 +111,7 @@
       color: var(--muted);
     }
 
-    input, select {
+    input, select, textarea {
       width: 100%;
       padding: 12px 12px;
       border-radius: 12px;
@@ -121,11 +121,16 @@
       outline: none;
     }
 
-    input:focus, select:focus {
+    textarea {
+      min-height: 82px;
+      resize: vertical;
+    }
+
+    input:focus, select:focus, textarea:focus {
       border-color: var(--accent);
     }
 
-    input:disabled, select:disabled, button:disabled {
+    input:disabled, select:disabled, button:disabled, textarea:disabled {
       opacity: .65;
       cursor: not-allowed;
     }
@@ -231,6 +236,18 @@
       font-weight: 800;
     }
 
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border-radius: 999px;
+      padding: 4px 8px;
+      font-size: .82rem;
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,.04);
+      color: var(--muted);
+    }
+
     .empty {
       color: var(--muted);
       text-align: center;
@@ -296,6 +313,7 @@
         <div class="pill">📱 Mobile-first</div>
         <div class="pill">🔐 Supabase login</div>
         <div class="pill">⚡ Live sync</div>
+        <div class="pill">🔁 Recurring bills</div>
       </div>
     </section>
 
@@ -444,6 +462,93 @@
           </div>
           <div id="txnList" class="list"></div>
         </div>
+
+        <div class="card">
+          <div class="actions" style="justify-content:space-between; align-items:center; margin-bottom:10px;">
+            <div>
+              <h2 style="margin:0;">Recurring Bills</h2>
+              <div class="sub">Build once, post monthly, avoid entering Duke Energy 700 damn times.</div>
+            </div>
+          </div>
+
+          <div class="row row-3">
+            <div>
+              <label for="rbMonthToPost">Post For Month</label>
+              <input id="rbMonthToPost" type="month" />
+            </div>
+            <div style="display:flex; align-items:end;">
+              <button class="btn warn" id="postRecurringBtn" style="width:100%;" type="button">Post This Month's Bills</button>
+            </div>
+            <div style="display:flex; align-items:end;">
+              <button class="btn secondary" id="reloadRecurringBtn" style="width:100%;" type="button">Reload Bills</button>
+            </div>
+          </div>
+
+          <div class="row row-3">
+            <div>
+              <label for="rbName">Bill Name</label>
+              <input id="rbName" type="text" placeholder="Rent, Duke Energy, Verizon..." />
+            </div>
+            <div>
+              <label for="rbAmount">Amount</label>
+              <input id="rbAmount" type="number" step="0.01" placeholder="0.00" />
+            </div>
+            <div>
+              <label for="rbDueDay">Due Day</label>
+              <input id="rbDueDay" type="number" min="1" max="31" placeholder="1-31" />
+            </div>
+          </div>
+
+          <div class="row row-3">
+            <div>
+              <label for="rbType">Type</label>
+              <select id="rbType">
+                <option value="expense">Expense</option>
+                <option value="income">Income</option>
+              </select>
+            </div>
+            <div>
+              <label for="rbCategory">Category</label>
+              <select id="rbCategory">
+                <option>Groceries</option>
+                <option>Utilities</option>
+                <option>Mortgage/Rent</option>
+                <option>Fuel</option>
+                <option>Dining</option>
+                <option>Medical</option>
+                <option>Kids</option>
+                <option>Pets</option>
+                <option>Insurance</option>
+                <option>Debt</option>
+                <option>Household</option>
+                <option>Entertainment</option>
+                <option>Income</option>
+                <option>Other</option>
+              </select>
+            </div>
+            <div>
+              <label for="rbActive">Status</label>
+              <select id="rbActive">
+                <option value="true">Active</option>
+                <option value="false">Inactive</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="row">
+            <div>
+              <label for="rbNotes">Notes</label>
+              <textarea id="rbNotes" placeholder="Optional notes..."></textarea>
+            </div>
+          </div>
+
+          <div class="actions">
+            <button class="btn good" id="saveRecurringBtn" type="button">Save Recurring Bill</button>
+            <button class="btn secondary" id="clearRecurringBtn" type="button">Clear</button>
+          </div>
+
+          <div id="recurringList" class="list" style="margin-top:12px;"></div>
+        </div>
       </div>
 
       <div class="grid">
@@ -498,7 +603,7 @@
           <h2>Setup</h2>
           <div class="sub">This file is already pointed at your Supabase project.</div>
           <div class="footer-note">
-            This build avoids the auth callback deadlock nonsense that was likely making login hang like a cheap shower curtain.
+            Recurring bills are posted into transactions with duplicate protection. So smashing the button repeatedly like a stressed chimp should not create 97 rent payments.
           </div>
         </div>
       </div>
@@ -514,6 +619,7 @@
     let currentUser = null;
     let transactions = [];
     let budgets = [];
+    let recurringBills = [];
     let isOwner = false;
     let realtimeChannel = null;
 
@@ -524,6 +630,7 @@
     const banner = el("banner");
     const txnList = el("txnList");
     const budgetList = el("budgetList");
+    const recurringList = el("recurringList");
     const budgetEditorWrap = el("budgetEditorWrap");
     const budgetReadOnlyNote = el("budgetReadOnlyNote");
 
@@ -570,6 +677,7 @@
       el("txnMonth").value = nowMonth();
       el("filterMonth").value = nowMonth();
       el("budgetMonth").value = nowMonth();
+      el("rbMonthToPost").value = nowMonth();
     }
 
     function resetTxnForm() {
@@ -586,6 +694,18 @@
       el("budgetMonth").value = nowMonth();
       el("budgetCategory").value = "Groceries";
       el("budgetAmount").value = "";
+    }
+
+    function resetRecurringForm() {
+      el("rbName").value = "";
+      el("rbAmount").value = "";
+      el("rbDueDay").value = "";
+      el("rbType").value = "expense";
+      el("rbCategory").value = "Utilities";
+      el("rbActive").value = "true";
+      el("rbNotes").value = "";
+      delete el("saveRecurringBtn").dataset.editId;
+      el("saveRecurringBtn").textContent = "Save Recurring Bill";
     }
 
     function setButtonBusy(id, busy, textWhenBusy = "Working...") {
@@ -606,6 +726,19 @@
         budgetEditorWrap.classList.add("hidden");
         budgetReadOnlyNote.classList.remove("hidden");
       }
+    }
+
+    function daysInMonth(year, monthNumber) {
+      return new Date(year, monthNumber, 0).getDate();
+    }
+
+    function monthToDate(yearMonth, day) {
+      const [yearStr, monthStr] = yearMonth.split("-");
+      const year = Number(yearStr);
+      const month = Number(monthStr);
+      const maxDay = daysInMonth(year, month);
+      const safeDay = Math.min(Number(day), maxDay);
+      return `${year}-${String(month).padStart(2, "0")}-${String(safeDay).padStart(2, "0")}`;
     }
 
     async function login() {
@@ -788,6 +921,76 @@
       }
     }
 
+    async function saveRecurringBill() {
+      try {
+        setButtonBusy("saveRecurringBtn", true, "Saving...");
+        const editId = el("saveRecurringBtn").dataset.editId || null;
+
+        const payload = {
+          bill_name: el("rbName").value.trim(),
+          amount: Number(el("rbAmount").value || 0),
+          due_day: Number(el("rbDueDay").value || 0),
+          txn_type: el("rbType").value,
+          category: el("rbCategory").value,
+          active: el("rbActive").value === "true",
+          notes: el("rbNotes").value.trim(),
+          created_by: currentUser?.email || null
+        };
+
+        if (!payload.bill_name || !payload.amount || !payload.due_day || !payload.category || !payload.txn_type) {
+          showBanner("Fill in bill name, amount, due day, type, and category.", "error");
+          return;
+        }
+
+        if (payload.due_day < 1 || payload.due_day > 31) {
+          showBanner("Due day must be between 1 and 31.", "error");
+          return;
+        }
+
+        let error;
+        if (editId) {
+          ({ error } = await sb.from("recurring_bills").update(payload).eq("id", editId));
+        } else {
+          ({ error } = await sb.from("recurring_bills").insert(payload));
+        }
+
+        if (error) throw error;
+
+        resetRecurringForm();
+        showBanner(editId ? "Recurring bill updated." : "Recurring bill saved.", "ok");
+      } catch (err) {
+        showBanner(`Save recurring bill failed:\n${err.message || err}`, "error", true);
+      } finally {
+        setButtonBusy("saveRecurringBtn", false);
+      }
+    }
+
+    async function deleteRecurringBill(id) {
+      try {
+        const { error } = await sb.from("recurring_bills").delete().eq("id", id);
+        if (error) throw error;
+        showBanner("Recurring bill deleted.", "ok");
+      } catch (err) {
+        showBanner(`Delete recurring bill failed:\n${err.message || err}`, "error", true);
+      }
+    }
+
+    function editRecurringBill(id) {
+      const bill = recurringBills.find(b => b.id === id);
+      if (!bill) return;
+
+      el("rbName").value = bill.bill_name || "";
+      el("rbAmount").value = bill.amount || "";
+      el("rbDueDay").value = bill.due_day || "";
+      el("rbType").value = bill.txn_type || "expense";
+      el("rbCategory").value = bill.category || "Utilities";
+      el("rbActive").value = String(Boolean(bill.active));
+      el("rbNotes").value = bill.notes || "";
+      el("saveRecurringBtn").dataset.editId = bill.id;
+      el("saveRecurringBtn").textContent = "Update Recurring Bill";
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
     async function loadTransactions() {
       const { data, error } = await sb
         .from("budget_transactions")
@@ -813,6 +1016,75 @@
 
       budgets = data || [];
       renderBudgets();
+    }
+
+    async function loadRecurringBills() {
+      const { data, error } = await sb
+        .from("recurring_bills")
+        .select("*")
+        .order("due_day", { ascending: true })
+        .order("bill_name", { ascending: true });
+
+      if (error) throw error;
+
+      recurringBills = data || [];
+      renderRecurringBills();
+    }
+
+    async function postRecurringBillsForMonth() {
+      try {
+        setButtonBusy("postRecurringBtn", true, "Posting...");
+        const targetMonth = el("rbMonthToPost").value;
+
+        if (!targetMonth) {
+          showBanner("Choose a month to post recurring bills.", "error");
+          return;
+        }
+
+        const activeBills = recurringBills.filter(b => b.active);
+        if (!activeBills.length) {
+          showBanner("No active recurring bills to post.", "warnbox");
+          return;
+        }
+
+        const { data: existingRows, error: existingErr } = await sb
+          .from("budget_transactions")
+          .select("recurring_bill_id, budget_month")
+          .eq("budget_month", targetMonth)
+          .not("recurring_bill_id", "is", null);
+
+        if (existingErr) throw existingErr;
+
+        const existingIds = new Set((existingRows || []).map(r => r.recurring_bill_id).filter(Boolean));
+
+        const rowsToInsert = activeBills
+          .filter(b => !existingIds.has(b.id))
+          .map(b => ({
+            txn_date: monthToDate(targetMonth, b.due_day),
+            txn_type: b.txn_type,
+            merchant: b.bill_name,
+            amount: Number(b.amount || 0),
+            category: b.category,
+            budget_month: targetMonth,
+            recurring: true,
+            recurring_bill_id: b.id,
+            created_by: currentUser?.email || null
+          }));
+
+        if (!rowsToInsert.length) {
+          showBanner("No new recurring bills to post for that month. Duplicate protection did its job. How rude.", "warnbox");
+          return;
+        }
+
+        const { error: insertErr } = await sb.from("budget_transactions").insert(rowsToInsert);
+        if (insertErr) throw insertErr;
+
+        showBanner(`Posted ${rowsToInsert.length} recurring bill(s) for ${targetMonth}.`, "ok");
+      } catch (err) {
+        showBanner(`Post recurring bills failed:\n${err.message || err}`, "error", true);
+      } finally {
+        setButtonBusy("postRecurringBtn", false);
+      }
     }
 
     function filteredTransactions() {
@@ -841,7 +1113,12 @@
           <div class="txn-top">
             <div>
               <div class="txn-title">${escapeHtml(t.merchant || "")}</div>
-              <div class="txn-meta">${escapeHtml(t.category || "Other")} • ${escapeHtml(t.txn_date || "")} • ${escapeHtml(t.created_by || "unknown")}</div>
+              <div class="txn-meta">
+                ${escapeHtml(t.category || "Other")} • ${escapeHtml(t.txn_date || "")} • ${escapeHtml(t.created_by || "unknown")}
+              </div>
+              <div class="actions">
+                ${t.recurring ? '<span class="tag">🔁 Recurring</span>' : ''}
+              </div>
             </div>
             <div class="amount ${t.txn_type}">${t.txn_type === "income" ? "+" : "-"}${fmtMoney(t.amount)}</div>
           </div>
@@ -889,6 +1166,36 @@
       }).join("");
     }
 
+    function renderRecurringBills() {
+      if (!recurringBills.length) {
+        recurringList.innerHTML = '<div class="empty">No recurring bills yet.</div>';
+        return;
+      }
+
+      recurringList.innerHTML = recurringBills.map((b) => `
+        <div class="txn">
+          <div class="txn-top">
+            <div>
+              <div class="txn-title">${escapeHtml(b.bill_name)}</div>
+              <div class="txn-meta">
+                Due day ${escapeHtml(b.due_day)} • ${escapeHtml(b.category)} • ${b.active ? "Active" : "Inactive"} • ${escapeHtml(b.created_by || "unknown")}
+              </div>
+              <div class="actions">
+                <span class="tag">${b.txn_type === "income" ? "💰 Income" : "📤 Expense"}</span>
+                <span class="tag">${b.active ? "✅ Active" : "⏸ Inactive"}</span>
+              </div>
+              ${b.notes ? `<div class="txn-meta" style="margin-top:6px;">${escapeHtml(b.notes)}</div>` : ""}
+            </div>
+            <div class="amount ${b.txn_type}">${b.txn_type === "income" ? "+" : "-"}${fmtMoney(b.amount)}</div>
+          </div>
+          <div class="actions">
+            <button class="btn secondary" onclick="editRecurringBill('${b.id}')" type="button">Edit</button>
+            <button class="btn danger" onclick="deleteRecurringBill('${b.id}')" type="button">Delete</button>
+          </div>
+        </div>
+      `).join("");
+    }
+
     function renderTotals() {
       const month = el("filterMonth").value || nowMonth();
       const monthRows = transactions.filter((t) => t.budget_month === month);
@@ -913,6 +1220,7 @@
       try {
         await loadTransactions();
         await loadBudgets();
+        await loadRecurringBills();
       } catch (err) {
         showBanner(`Load failed:\n${err.message || err}`, "error", true);
       }
@@ -950,6 +1258,9 @@
         })
         .on("postgres_changes", { event: "*", schema: "public", table: "budget_targets" }, async () => {
           await refreshAll();
+        })
+        .on("postgres_changes", { event: "*", schema: "public", table: "recurring_bills" }, async () => {
+          await refreshAll();
         });
 
       realtimeChannel.subscribe((status) => {
@@ -966,6 +1277,10 @@
       el("saveTxnBtn").addEventListener("click", saveTransaction);
       el("resetTxnBtn").addEventListener("click", resetTxnForm);
       el("saveBudgetBtn").addEventListener("click", saveBudget);
+      el("saveRecurringBtn").addEventListener("click", saveRecurringBill);
+      el("clearRecurringBtn").addEventListener("click", resetRecurringForm);
+      el("postRecurringBtn").addEventListener("click", postRecurringBillsForMonth);
+      el("reloadRecurringBtn").addEventListener("click", loadRecurringBills);
 
       el("filterMonth").addEventListener("change", () => {
         renderTransactions();
@@ -975,14 +1290,6 @@
       el("filterType").addEventListener("change", renderTransactions);
       el("filterCategory").addEventListener("change", renderTransactions);
       el("budgetMonth").addEventListener("change", renderBudgets);
-
-      el("clearFiltersBtn").addEventListener("click", () => {
-        el("filterMonth").value = nowMonth();
-        el("filterType").value = "all";
-        el("filterCategory").value = "all";
-        renderTransactions();
-        renderTotals();
-      });
     }
 
     async function boot() {
@@ -1018,6 +1325,7 @@
         setDefaults();
         resetTxnForm();
         resetBudgetForm();
+        resetRecurringForm();
         await restoreExistingSession();
       } catch (err) {
         showBanner(`Startup failed:\n${err.message || err}`, "error", true);
@@ -1035,6 +1343,8 @@
 
     window.deleteTransaction = deleteTransaction;
     window.deleteBudget = deleteBudget;
+    window.editRecurringBill = editRecurringBill;
+    window.deleteRecurringBill = deleteRecurringBill;
 
     document.addEventListener("DOMContentLoaded", boot);
   </script>
