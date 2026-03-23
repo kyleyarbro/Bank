@@ -23,10 +23,22 @@
     }
 
     * { box-sizing: border-box; }
-    html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text); font-family: Arial, Helvetica, sans-serif; }
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: Arial, Helvetica, sans-serif;
+    }
     body { min-height: 100vh; }
     button, input, select { font: inherit; }
-    .wrap { width: min(100%, 860px); margin: 0 auto; padding: 14px; }
+
+    .wrap {
+      width: min(100%, 860px);
+      margin: 0 auto;
+      padding: 14px;
+    }
+
     .hero {
       background: linear-gradient(180deg, rgba(103,232,249,.14), rgba(34,197,94,.08));
       border: 1px solid var(--line);
@@ -35,19 +47,40 @@
       box-shadow: var(--shadow);
       margin-bottom: 14px;
     }
-    .hero h1 { margin: 0 0 6px; font-size: 1.8rem; }
-    .hero p { margin: 0; color: var(--muted); line-height: 1.4; }
+
+    .hero h1 {
+      margin: 0 0 6px;
+      font-size: 1.8rem;
+    }
+
+    .hero p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.4;
+    }
+
     .statusbar {
-      display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 14px;
     }
+
     .pill {
-      display: inline-flex; align-items: center; gap: 8px;
-      padding: 8px 12px; border-radius: 999px;
-      background: rgba(255,255,255,.04); border: 1px solid var(--line);
-      color: var(--muted); font-size: .92rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.04);
+      border: 1px solid var(--line);
+      color: var(--muted);
+      font-size: .92rem;
     }
+
     .grid { display: grid; gap: 14px; }
     .grid-2 { grid-template-columns: 1fr; }
+
     .card {
       background: var(--panel);
       border: 1px solid var(--line);
@@ -55,51 +88,187 @@
       padding: 14px;
       box-shadow: var(--shadow);
     }
+
     .card h2, .card h3 { margin: 0 0 10px; }
-    .sub { color: var(--muted); font-size: .92rem; }
-    .row { display: grid; gap: 10px; margin-bottom: 10px; }
+
+    .sub {
+      color: var(--muted);
+      font-size: .92rem;
+    }
+
+    .row {
+      display: grid;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
     .row-2, .row-3, .row-4 { grid-template-columns: 1fr; }
-    label { display: block; font-size: .92rem; margin-bottom: 6px; color: var(--muted); }
+
+    label {
+      display: block;
+      font-size: .92rem;
+      margin-bottom: 6px;
+      color: var(--muted);
+    }
+
     input, select {
-      width: 100%; padding: 12px 12px; border-radius: 12px;
-      border: 1px solid var(--line); background: var(--panel-2); color: var(--text);
+      width: 100%;
+      padding: 12px 12px;
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      background: var(--panel-2);
+      color: var(--text);
       outline: none;
     }
-    input:focus, select:focus { border-color: var(--accent); }
-    .actions { display: flex; gap: 10px; flex-wrap: wrap; }
+
+    input:focus, select:focus {
+      border-color: var(--accent);
+    }
+
+    input:disabled, select:disabled {
+      opacity: .65;
+      cursor: not-allowed;
+    }
+
+    .actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
     .btn {
-      border: 0; cursor: pointer; padding: 12px 14px; border-radius: 12px;
-      background: var(--accent); color: #06202b; font-weight: 700;
+      border: 0;
+      cursor: pointer;
+      padding: 12px 14px;
+      border-radius: 12px;
+      background: var(--accent);
+      color: #06202b;
+      font-weight: 700;
     }
-    .btn.secondary { background: #273657; color: var(--text); border: 1px solid var(--line); }
-    .btn.good { background: var(--accent-2); color: #05250f; }
-    .btn.warn { background: var(--warn); color: #2d2204; }
-    .btn.danger { background: var(--danger); color: #3a0913; }
-    .totals { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+
+    .btn.secondary {
+      background: #273657;
+      color: var(--text);
+      border: 1px solid var(--line);
+    }
+
+    .btn.good {
+      background: var(--accent-2);
+      color: #05250f;
+    }
+
+    .btn.warn {
+      background: var(--warn);
+      color: #2d2204;
+    }
+
+    .btn.danger {
+      background: var(--danger);
+      color: #3a0913;
+    }
+
+    .totals {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+    }
+
     .metric {
-      background: var(--panel-2); border: 1px solid var(--line); border-radius: 14px; padding: 12px;
+      background: var(--panel-2);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 12px;
     }
-    .metric .k { font-size: .85rem; color: var(--muted); }
-    .metric .v { font-size: 1.2rem; font-weight: 700; margin-top: 4px; }
-    .list { display: grid; gap: 10px; }
+
+    .metric .k {
+      font-size: .85rem;
+      color: var(--muted);
+    }
+
+    .metric .v {
+      font-size: 1.2rem;
+      font-weight: 700;
+      margin-top: 4px;
+    }
+
+    .list {
+      display: grid;
+      gap: 10px;
+    }
+
     .txn {
-      border: 1px solid var(--line); background: var(--panel-2); border-radius: 14px; padding: 12px;
-      display: grid; gap: 8px;
+      border: 1px solid var(--line);
+      background: var(--panel-2);
+      border-radius: 14px;
+      padding: 12px;
+      display: grid;
+      gap: 8px;
     }
-    .txn-top { display: flex; justify-content: space-between; gap: 10px; align-items: start; }
-    .txn-title { font-weight: 700; }
-    .txn-meta { color: var(--muted); font-size: .9rem; }
-    .amount.income { color: #86efac; font-weight: 800; }
-    .amount.expense { color: #fda4af; font-weight: 800; }
-    .empty { color: var(--muted); text-align: center; padding: 24px 12px; }
+
+    .txn-top {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      align-items: start;
+    }
+
+    .txn-title {
+      font-weight: 700;
+    }
+
+    .txn-meta {
+      color: var(--muted);
+      font-size: .9rem;
+    }
+
+    .amount.income {
+      color: #86efac;
+      font-weight: 800;
+    }
+
+    .amount.expense {
+      color: #fda4af;
+      font-weight: 800;
+    }
+
+    .empty {
+      color: var(--muted);
+      text-align: center;
+      padding: 24px 12px;
+    }
+
     .hidden { display: none !important; }
-    .footer-note { color: var(--muted); font-size: .85rem; margin-top: 10px; }
-    .banner {
-      margin-bottom: 12px; padding: 12px; border-radius: 12px; border: 1px solid var(--line);
-      background: rgba(255,255,255,.04); color: var(--text);
+
+    .footer-note {
+      color: var(--muted);
+      font-size: .85rem;
+      margin-top: 10px;
     }
-    .error { border-color: rgba(251,113,133,.45); background: rgba(251,113,133,.08); }
-    .ok { border-color: rgba(34,197,94,.4); background: rgba(34,197,94,.08); }
+
+    .banner {
+      margin-bottom: 12px;
+      padding: 12px;
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,.04);
+      color: var(--text);
+    }
+
+    .error {
+      border-color: rgba(251,113,133,.45);
+      background: rgba(251,113,133,.08);
+    }
+
+    .ok {
+      border-color: rgba(34,197,94,.4);
+      background: rgba(34,197,94,.08);
+    }
+
+    .read-only-note {
+      margin-top: 8px;
+      color: var(--warn);
+      font-size: .9rem;
+    }
 
     @media (min-width: 760px) {
       .grid-2 { grid-template-columns: 1.15fr .85fr; }
@@ -274,47 +443,55 @@
         <div class="card">
           <h2>Monthly Budget Targets</h2>
           <p class="sub">Set simple monthly targets. You can add more categories later without summoning accounting demons.</p>
-          <div class="row row-2">
-            <div>
-              <label for="budgetMonth">Month</label>
-              <input id="budgetMonth" type="month" />
+
+          <div id="budgetEditorWrap">
+            <div class="row row-2">
+              <div>
+                <label for="budgetMonth">Month</label>
+                <input id="budgetMonth" type="month" />
+              </div>
+              <div>
+                <label for="budgetCategory">Category</label>
+                <select id="budgetCategory">
+                  <option>Groceries</option>
+                  <option>Utilities</option>
+                  <option>Mortgage/Rent</option>
+                  <option>Fuel</option>
+                  <option>Dining</option>
+                  <option>Medical</option>
+                  <option>Kids</option>
+                  <option>Pets</option>
+                  <option>Insurance</option>
+                  <option>Debt</option>
+                  <option>Household</option>
+                  <option>Entertainment</option>
+                  <option>Other</option>
+                </select>
+              </div>
             </div>
-            <div>
-              <label for="budgetCategory">Category</label>
-              <select id="budgetCategory">
-                <option>Groceries</option>
-                <option>Utilities</option>
-                <option>Mortgage/Rent</option>
-                <option>Fuel</option>
-                <option>Dining</option>
-                <option>Medical</option>
-                <option>Kids</option>
-                <option>Pets</option>
-                <option>Insurance</option>
-                <option>Debt</option>
-                <option>Household</option>
-                <option>Entertainment</option>
-                <option>Other</option>
-              </select>
+            <div class="row row-2">
+              <div>
+                <label for="budgetAmount">Budget Amount</label>
+                <input id="budgetAmount" type="number" step="0.01" placeholder="0.00" />
+              </div>
+              <div style="display:flex; align-items:end;">
+                <button class="btn good" id="saveBudgetBtn" style="width:100%;">Save Target</button>
+              </div>
             </div>
           </div>
-          <div class="row row-2">
-            <div>
-              <label for="budgetAmount">Budget Amount</label>
-              <input id="budgetAmount" type="number" step="0.01" placeholder="0.00" />
-            </div>
-            <div style="display:flex; align-items:end;">
-              <button class="btn good" id="saveBudgetBtn" style="width:100%;">Save Target</button>
-            </div>
+
+          <div id="budgetReadOnlyNote" class="read-only-note hidden">
+            View-only mode: only Kyle can change budget targets. Everybody else gets to admire them from a respectful distance.
           </div>
+
           <div id="budgetList" class="list"></div>
         </div>
 
         <div class="card">
           <h2>Setup</h2>
-          <div class="sub">Before this works, replace the two values in the script with your Supabase project URL and anon key.</div>
+          <div class="sub">This file is already pointed at your Supabase project. If you ever rotate keys, update them here.</div>
           <div class="footer-note">
-            Also run the provided <strong>schema.sql</strong> in Supabase SQL editor, then turn on Realtime for the tables. That gives you cross-platform live updates instead of the usual “why is your phone showing different numbers than mine?” marriage enrichment exercise.
+            Also make sure your Supabase RLS policies match the owner-only budget target rules, or the app will look smart while the database behaves like a drunk bouncer.
           </div>
         </div>
       </div>
@@ -324,78 +501,99 @@
   <script>
     const SUPABASE_URL = "https://nhdzksklqqzoqatmctyr.supabase.co";
     const SUPABASE_ANON_KEY = "sb_publishable_7QVjXsUdKnAiwp9uJcNTpQ_fHfHCBuh";
+    const OWNER_EMAIL = "k.yarbro@outlook.com";
 
     const { createClient } = supabase;
     const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     const el = (id) => document.getElementById(id);
-    const authCard = el('authCard');
-    const appShell = el('appShell');
-    const banner = el('banner');
-    const txnList = el('txnList');
-    const budgetList = el('budgetList');
+
+    const authCard = el("authCard");
+    const appShell = el("appShell");
+    const banner = el("banner");
+    const txnList = el("txnList");
+    const budgetList = el("budgetList");
+    const budgetEditorWrap = el("budgetEditorWrap");
+    const budgetReadOnlyNote = el("budgetReadOnlyNote");
+
     let currentUser = null;
     let transactions = [];
     let budgets = [];
+    let isOwner = false;
 
     function nowMonth() {
       const d = new Date();
       const y = d.getFullYear();
-      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const m = String(d.getMonth() + 1).padStart(2, "0");
       return `${y}-${m}`;
     }
 
     function today() {
       const d = new Date();
       const y = d.getFullYear();
-      const m = String(d.getMonth() + 1).padStart(2, '0');
-      const day = String(d.getDate()).padStart(2, '0');
+      const m = String(d.getMonth() + 1).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
       return `${y}-${m}-${day}`;
     }
 
     function fmtMoney(n) {
       const v = Number(n || 0);
-      return v.toLocaleString(undefined, { style: 'currency', currency: 'USD' });
+      return v.toLocaleString(undefined, { style: "currency", currency: "USD" });
     }
 
-    function showBanner(msg, type = 'ok') {
+    function showBanner(msg, type = "ok") {
       banner.textContent = msg;
       banner.className = `banner ${type}`;
-      banner.classList.remove('hidden');
-      setTimeout(() => banner.classList.add('hidden'), 3800);
+      banner.classList.remove("hidden");
+      setTimeout(() => banner.classList.add("hidden"), 3800);
     }
 
     function setDefaults() {
-      el('txnDate').value = today();
-      el('txnMonth').value = nowMonth();
-      el('filterMonth').value = nowMonth();
-      el('budgetMonth').value = nowMonth();
+      el("txnDate").value = today();
+      el("txnMonth").value = nowMonth();
+      el("filterMonth").value = nowMonth();
+      el("budgetMonth").value = nowMonth();
     }
 
     function resetTxnForm() {
-      el('txnDate').value = today();
-      el('txnType').value = 'expense';
-      el('txnMerchant').value = '';
-      el('txnAmount').value = '';
-      el('txnCategory').value = 'Groceries';
-      el('txnMonth').value = nowMonth();
-      el('txnRecurring').value = 'false';
+      el("txnDate").value = today();
+      el("txnType").value = "expense";
+      el("txnMerchant").value = "";
+      el("txnAmount").value = "";
+      el("txnCategory").value = "Groceries";
+      el("txnMonth").value = nowMonth();
+      el("txnRecurring").value = "false";
+    }
+
+    function resetBudgetForm() {
+      el("budgetMonth").value = nowMonth();
+      el("budgetCategory").value = "Groceries";
+      el("budgetAmount").value = "";
+    }
+
+    function escapeHtml(str) {
+      return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
     }
 
     async function login() {
-      const email = el('authEmail').value.trim();
-      const password = el('authPassword').value;
+      const email = el("authEmail").value.trim();
+      const password = el("authPassword").value;
       const { error } = await sb.auth.signInWithPassword({ email, password });
-      if (error) return showBanner(error.message, 'error');
-      showBanner('Logged in.', 'ok');
+      if (error) return showBanner(error.message, "error");
+      showBanner("Logged in.", "ok");
     }
 
     async function signup() {
-      const email = el('authEmail').value.trim();
-      const password = el('authPassword').value;
+      const email = el("authEmail").value.trim();
+      const password = el("authPassword").value;
       const { error } = await sb.auth.signUp({ email, password });
-      if (error) return showBanner(error.message, 'error');
-      showBanner('Account created. Check email if your project requires confirmation.', 'ok');
+      if (error) return showBanner(error.message, "error");
+      showBanner("Account created. Check email if your project requires confirmation.", "ok");
     }
 
     async function logout() {
@@ -404,130 +602,171 @@
 
     async function saveTransaction() {
       const payload = {
-        txn_date: el('txnDate').value,
-        txn_type: el('txnType').value,
-        merchant: el('txnMerchant').value.trim(),
-        amount: Number(el('txnAmount').value || 0),
-        category: el('txnCategory').value,
-        budget_month: el('txnMonth').value,
-        recurring: el('txnRecurring').value === 'true',
+        txn_date: el("txnDate").value,
+        txn_type: el("txnType").value,
+        merchant: el("txnMerchant").value.trim(),
+        amount: Number(el("txnAmount").value || 0),
+        category: el("txnCategory").value,
+        budget_month: el("txnMonth").value,
+        recurring: el("txnRecurring").value === "true",
         created_by: currentUser?.email || null,
       };
+
       if (!payload.txn_date || !payload.merchant || !payload.amount || !payload.budget_month) {
-        return showBanner('Fill in date, merchant/source, amount, and month.', 'error');
+        return showBanner("Fill in date, merchant/source, amount, and month.", "error");
       }
-      const { error } = await sb.from('budget_transactions').insert(payload);
-      if (error) return showBanner(error.message, 'error');
+
+      const { error } = await sb.from("budget_transactions").insert(payload);
+      if (error) return showBanner(error.message, "error");
+
       resetTxnForm();
-      showBanner('Transaction saved.', 'ok');
+      showBanner("Transaction saved.", "ok");
     }
 
     async function deleteTransaction(id) {
-      const { error } = await sb.from('budget_transactions').delete().eq('id', id);
-      if (error) return showBanner(error.message, 'error');
-      showBanner('Transaction deleted.', 'ok');
+      const { error } = await sb.from("budget_transactions").delete().eq("id", id);
+      if (error) return showBanner(error.message, "error");
+      showBanner("Transaction deleted.", "ok");
     }
 
     async function saveBudget() {
+      if (!isOwner) {
+        return showBanner("Only the owner can change budget targets.", "error");
+      }
+
       const payload = {
-        budget_month: el('budgetMonth').value,
-        category: el('budgetCategory').value,
-        target_amount: Number(el('budgetAmount').value || 0),
+        budget_month: el("budgetMonth").value,
+        category: el("budgetCategory").value,
+        target_amount: Number(el("budgetAmount").value || 0),
         created_by: currentUser?.email || null,
       };
+
       if (!payload.budget_month || !payload.category || !payload.target_amount) {
-        return showBanner('Fill in month, category, and amount.', 'error');
+        return showBanner("Fill in month, category, and amount.", "error");
       }
 
       const { data: existing, error: findErr } = await sb
-        .from('budget_targets')
-        .select('id')
-        .eq('budget_month', payload.budget_month)
-        .eq('category', payload.category)
+        .from("budget_targets")
+        .select("id")
+        .eq("budget_month", payload.budget_month)
+        .eq("category", payload.category)
         .maybeSingle();
 
-      if (findErr) return showBanner(findErr.message, 'error');
+      if (findErr) return showBanner(findErr.message, "error");
 
       let error;
       if (existing?.id) {
-        ({ error } = await sb.from('budget_targets').update({ target_amount: payload.target_amount, created_by: payload.created_by }).eq('id', existing.id));
+        ({ error } = await sb
+          .from("budget_targets")
+          .update({
+            target_amount: payload.target_amount,
+            created_by: payload.created_by
+          })
+          .eq("id", existing.id));
       } else {
-        ({ error } = await sb.from('budget_targets').insert(payload));
+        ({ error } = await sb.from("budget_targets").insert(payload));
       }
-      if (error) return showBanner(error.message, 'error');
-      el('budgetAmount').value = '';
-      showBanner('Budget target saved.', 'ok');
+
+      if (error) return showBanner(error.message, "error");
+
+      el("budgetAmount").value = "";
+      showBanner("Budget target saved.", "ok");
     }
 
     async function deleteBudget(id) {
-      const { error } = await sb.from('budget_targets').delete().eq('id', id);
-      if (error) return showBanner(error.message, 'error');
-      showBanner('Budget target deleted.', 'ok');
+      if (!isOwner) {
+        return showBanner("Only the owner can delete budget targets.", "error");
+      }
+
+      const { error } = await sb.from("budget_targets").delete().eq("id", id);
+      if (error) return showBanner(error.message, "error");
+      showBanner("Budget target deleted.", "ok");
     }
 
     async function loadTransactions() {
-      const { data, error } = await sb.from('budget_transactions').select('*').order('txn_date', { ascending: false }).order('created_at', { ascending: false });
-      if (error) return showBanner(error.message, 'error');
+      const { data, error } = await sb
+        .from("budget_transactions")
+        .select("*")
+        .order("txn_date", { ascending: false })
+        .order("created_at", { ascending: false });
+
+      if (error) return showBanner(error.message, "error");
+
       transactions = data || [];
       renderTransactions();
       renderTotals();
     }
 
     async function loadBudgets() {
-      const { data, error } = await sb.from('budget_targets').select('*').order('budget_month', { ascending: false }).order('category', { ascending: true });
-      if (error) return showBanner(error.message, 'error');
+      const { data, error } = await sb
+        .from("budget_targets")
+        .select("*")
+        .order("budget_month", { ascending: false })
+        .order("category", { ascending: true });
+
+      if (error) return showBanner(error.message, "error");
+
       budgets = data || [];
       renderBudgets();
     }
 
     function filteredTransactions() {
-      const month = el('filterMonth').value;
-      const type = el('filterType').value;
-      const category = el('filterCategory').value;
+      const month = el("filterMonth").value;
+      const type = el("filterType").value;
+      const category = el("filterCategory").value;
+
       return transactions.filter(t => {
         const okMonth = !month || t.budget_month === month;
-        const okType = type === 'all' ? true : t.txn_type === type;
-        const okCategory = category === 'all' ? true : t.category === category;
+        const okType = type === "all" ? true : t.txn_type === type;
+        const okCategory = category === "all" ? true : t.category === category;
         return okMonth && okType && okCategory;
       });
     }
 
     function renderTransactions() {
       const rows = filteredTransactions();
+
       if (!rows.length) {
         txnList.innerHTML = '<div class="empty">No transactions found.</div>';
         return;
       }
+
       txnList.innerHTML = rows.map(t => `
         <div class="txn">
           <div class="txn-top">
             <div>
-              <div class="txn-title">${escapeHtml(t.merchant || '')}</div>
-              <div class="txn-meta">${escapeHtml(t.category || 'Other')} • ${escapeHtml(t.txn_date || '')} • ${escapeHtml(t.created_by || 'unknown')}</div>
+              <div class="txn-title">${escapeHtml(t.merchant || "")}</div>
+              <div class="txn-meta">${escapeHtml(t.category || "Other")} • ${escapeHtml(t.txn_date || "")} • ${escapeHtml(t.created_by || "unknown")}</div>
             </div>
-            <div class="amount ${t.txn_type}">${t.txn_type === 'income' ? '+' : '-'}${fmtMoney(t.amount)}</div>
+            <div class="amount ${t.txn_type}">${t.txn_type === "income" ? "+" : "-"}${fmtMoney(t.amount)}</div>
           </div>
           <div class="actions">
             <button class="btn danger" onclick="deleteTransaction('${t.id}')">Delete</button>
           </div>
         </div>
-      `).join('');
+      `).join("");
     }
 
     function renderBudgets() {
-      const month = el('budgetMonth').value || nowMonth();
+      const month = el("budgetMonth").value || nowMonth();
       const monthRows = budgets.filter(b => b.budget_month === month);
+
       if (!monthRows.length) {
         budgetList.innerHTML = '<div class="empty">No budget targets for this month yet.</div>';
         return;
       }
+
       const spentByCategory = {};
-      transactions.filter(t => t.budget_month === month && t.txn_type === 'expense').forEach(t => {
-        spentByCategory[t.category] = (spentByCategory[t.category] || 0) + Number(t.amount || 0);
-      });
+      transactions
+        .filter(t => t.budget_month === month && t.txn_type === "expense")
+        .forEach(t => {
+          spentByCategory[t.category] = (spentByCategory[t.category] || 0) + Number(t.amount || 0);
+        });
+
       budgetList.innerHTML = monthRows.map(b => {
         const spent = Number(spentByCategory[b.category] || 0);
         const remaining = Number(b.target_amount || 0) - spent;
+
         return `
           <div class="txn">
             <div class="txn-top">
@@ -535,34 +774,34 @@
                 <div class="txn-title">${escapeHtml(b.category)}</div>
                 <div class="txn-meta">Target ${fmtMoney(b.target_amount)} • Spent ${fmtMoney(spent)} • Remaining ${fmtMoney(remaining)}</div>
               </div>
-              <div class="amount ${remaining >= 0 ? 'income' : 'expense'}">${fmtMoney(remaining)}</div>
+              <div class="amount ${remaining >= 0 ? "income" : "expense"}">${fmtMoney(remaining)}</div>
             </div>
             <div class="actions">
-              <button class="btn danger" onclick="deleteBudget('${b.id}')">Delete</button>
+              ${isOwner ? `<button class="btn danger" onclick="deleteBudget('${b.id}')">Delete</button>` : ""}
             </div>
           </div>
         `;
-      }).join('');
+      }).join("");
     }
 
     function renderTotals() {
-      const month = el('filterMonth').value || nowMonth();
+      const month = el("filterMonth").value || nowMonth();
       const monthRows = transactions.filter(t => t.budget_month === month);
-      const income = monthRows.filter(t => t.txn_type === 'income').reduce((s, t) => s + Number(t.amount || 0), 0);
-      const expenses = monthRows.filter(t => t.txn_type === 'expense').reduce((s, t) => s + Number(t.amount || 0), 0);
-      el('incomeTotal').textContent = fmtMoney(income);
-      el('expenseTotal').textContent = fmtMoney(expenses);
-      el('netTotal').textContent = fmtMoney(income - expenses);
-      el('monthTotal').textContent = fmtMoney(monthRows.reduce((s, t) => s + (t.txn_type === 'income' ? Number(t.amount || 0) : -Number(t.amount || 0)), 0));
-    }
 
-    function escapeHtml(str) {
-      return String(str)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#039;');
+      const income = monthRows
+        .filter(t => t.txn_type === "income")
+        .reduce((s, t) => s + Number(t.amount || 0), 0);
+
+      const expenses = monthRows
+        .filter(t => t.txn_type === "expense")
+        .reduce((s, t) => s + Number(t.amount || 0), 0);
+
+      el("incomeTotal").textContent = fmtMoney(income);
+      el("expenseTotal").textContent = fmtMoney(expenses);
+      el("netTotal").textContent = fmtMoney(income - expenses);
+      el("monthTotal").textContent = fmtMoney(
+        monthRows.reduce((s, t) => s + (t.txn_type === "income" ? Number(t.amount || 0) : -Number(t.amount || 0)), 0)
+      );
     }
 
     async function refreshAll() {
@@ -570,46 +809,66 @@
       await loadBudgets();
     }
 
+    function applyOwnerUI() {
+      if (isOwner) {
+        budgetEditorWrap.classList.remove("hidden");
+        budgetReadOnlyNote.classList.add("hidden");
+      } else {
+        budgetEditorWrap.classList.add("hidden");
+        budgetReadOnlyNote.classList.remove("hidden");
+      }
+    }
+
     async function setSessionUI() {
       const { data } = await sb.auth.getUser();
       currentUser = data?.user || null;
+      isOwner = currentUser?.email === OWNER_EMAIL;
+
       if (currentUser) {
-        authCard.classList.add('hidden');
-        appShell.classList.remove('hidden');
-        el('whoami').textContent = `Signed in as ${currentUser.email}`;
+        authCard.classList.add("hidden");
+        appShell.classList.remove("hidden");
+        el("whoami").textContent = `Signed in as ${currentUser.email}`;
+        applyOwnerUI();
         await refreshAll();
       } else {
-        authCard.classList.remove('hidden');
-        appShell.classList.add('hidden');
+        authCard.classList.remove("hidden");
+        appShell.classList.add("hidden");
       }
     }
 
     function bindRealtime() {
-      sb.channel('budget-live')
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'budget_transactions' }, async () => {
+      sb.channel("budget-live")
+        .on("postgres_changes", { event: "*", schema: "public", table: "budget_transactions" }, async () => {
           await loadTransactions();
           renderBudgets();
         })
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'budget_targets' }, async () => {
+        .on("postgres_changes", { event: "*", schema: "public", table: "budget_targets" }, async () => {
           await loadBudgets();
         })
         .subscribe();
     }
 
-    el('loginBtn').addEventListener('click', login);
-    el('signupBtn').addEventListener('click', signup);
-    el('logoutBtn').addEventListener('click', logout);
-    el('saveTxnBtn').addEventListener('click', saveTransaction);
-    el('resetTxnBtn').addEventListener('click', resetTxnForm);
-    el('saveBudgetBtn').addEventListener('click', saveBudget);
-    el('filterMonth').addEventListener('change', () => { renderTransactions(); renderTotals(); });
-    el('filterType').addEventListener('change', renderTransactions);
-    el('filterCategory').addEventListener('change', renderTransactions);
-    el('budgetMonth').addEventListener('change', renderBudgets);
-    el('clearFiltersBtn').addEventListener('click', () => {
-      el('filterMonth').value = nowMonth();
-      el('filterType').value = 'all';
-      el('filterCategory').value = 'all';
+    el("loginBtn").addEventListener("click", login);
+    el("signupBtn").addEventListener("click", signup);
+    el("logoutBtn").addEventListener("click", logout);
+    el("saveTxnBtn").addEventListener("click", saveTransaction);
+    el("resetTxnBtn").addEventListener("click", resetTxnForm);
+    el("saveBudgetBtn").addEventListener("click", saveBudget);
+
+    el("filterMonth").addEventListener("change", () => {
+      renderTransactions();
+      renderTotals();
+    });
+
+    el("filterType").addEventListener("change", renderTransactions);
+    el("filterCategory").addEventListener("change", renderTransactions);
+
+    el("budgetMonth").addEventListener("change", renderBudgets);
+
+    el("clearFiltersBtn").addEventListener("click", () => {
+      el("filterMonth").value = nowMonth();
+      el("filterType").value = "all";
+      el("filterCategory").value = "all";
       renderTransactions();
       renderTotals();
     });
@@ -620,6 +879,7 @@
 
     setDefaults();
     resetTxnForm();
+    resetBudgetForm();
     bindRealtime();
     setSessionUI();
 
