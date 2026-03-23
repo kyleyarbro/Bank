@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Household Budget</title>
-  <meta name="description" content="Mobile-first household budget app with Supabase auth, realtime sync, recurring bills, and shared transactions." />
+  <meta name="description" content="Mobile-first household budget app with Supabase auth, realtime sync, recurring bills, and CSV import." />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     :root {
@@ -34,7 +34,7 @@
     button, input, select, textarea { font: inherit; }
 
     .wrap {
-      width: min(100%, 960px);
+      width: min(100%, 1040px);
       margin: 0 auto;
       padding: 14px;
     }
@@ -102,7 +102,7 @@
       margin-bottom: 10px;
     }
 
-    .row-2, .row-3, .row-4 { grid-template-columns: 1fr; }
+    .row-2, .row-3, .row-4, .row-5 { grid-template-columns: 1fr; }
 
     label {
       display: block;
@@ -294,11 +294,45 @@
       font-size: .9rem;
     }
 
+    .table-wrap {
+      overflow-x: auto;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: var(--panel-2);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 760px;
+    }
+
+    th, td {
+      text-align: left;
+      padding: 10px;
+      border-bottom: 1px solid var(--line);
+      vertical-align: top;
+      font-size: .92rem;
+    }
+
+    th {
+      color: var(--muted);
+      background: rgba(255,255,255,.03);
+      position: sticky;
+      top: 0;
+    }
+
+    .small {
+      font-size: .82rem;
+      color: var(--muted);
+    }
+
     @media (min-width: 760px) {
       .grid-2 { grid-template-columns: 1.15fr .85fr; }
       .row-2 { grid-template-columns: repeat(2, 1fr); }
       .row-3 { grid-template-columns: 1.1fr .9fr .9fr; }
       .row-4 { grid-template-columns: repeat(4, 1fr); }
+      .row-5 { grid-template-columns: repeat(5, 1fr); }
       .totals { grid-template-columns: repeat(4, 1fr); }
       .hero { padding: 22px; }
     }
@@ -314,6 +348,7 @@
         <div class="pill">🔐 Supabase login</div>
         <div class="pill">⚡ Live sync</div>
         <div class="pill">🔁 Recurring bills</div>
+        <div class="pill">📄 CSV import</div>
       </div>
     </section>
 
@@ -549,6 +584,119 @@
 
           <div id="recurringList" class="list" style="margin-top:12px;"></div>
         </div>
+
+        <div class="card">
+          <h2>CSV Import</h2>
+          <p class="sub">Import bank exports without manually typing every transaction like an 1800s bookkeeper with depression.</p>
+
+          <div class="row row-2">
+            <div>
+              <label for="csvFile">CSV File</label>
+              <input id="csvFile" type="file" accept=".csv,text/csv" />
+            </div>
+            <div>
+              <label for="csvBudgetMonth">Budget Month For Imported Rows</label>
+              <input id="csvBudgetMonth" type="month" />
+            </div>
+          </div>
+
+          <div class="actions">
+            <button class="btn secondary" id="parseCsvBtn" type="button">Load CSV</button>
+            <button class="btn warn" id="importCsvBtn" type="button">Import CSV Rows</button>
+            <button class="btn secondary" id="clearCsvBtn" type="button">Clear CSV</button>
+          </div>
+
+          <div id="csvMapperWrap" class="hidden" style="margin-top:12px;">
+            <div class="row row-5">
+              <div>
+                <label for="mapDate">Date Column</label>
+                <select id="mapDate"></select>
+              </div>
+              <div>
+                <label for="mapMerchant">Description / Merchant</label>
+                <select id="mapMerchant"></select>
+              </div>
+              <div>
+                <label for="mapAmount">Amount Column</label>
+                <select id="mapAmount"></select>
+              </div>
+              <div>
+                <label for="mapDebit">Debit Column</label>
+                <select id="mapDebit"></select>
+              </div>
+              <div>
+                <label for="mapCredit">Credit Column</label>
+                <select id="mapCredit"></select>
+              </div>
+            </div>
+
+            <div class="row row-4">
+              <div>
+                <label for="mapCategory">Category Column (optional)</label>
+                <select id="mapCategory"></select>
+              </div>
+              <div>
+                <label for="mapTypeMode">Type Mode</label>
+                <select id="mapTypeMode">
+                  <option value="auto-amount">Single Amount Column</option>
+                  <option value="debit-credit">Separate Debit/Credit Columns</option>
+                </select>
+              </div>
+              <div>
+                <label for="mapDateFormat">Date Format Hint</label>
+                <select id="mapDateFormat">
+                  <option value="auto">Auto Detect</option>
+                  <option value="mdy">MM/DD/YYYY</option>
+                  <option value="ymd">YYYY-MM-DD</option>
+                  <option value="dmy">DD/MM/YYYY</option>
+                </select>
+              </div>
+              <div>
+                <label for="defaultImportCategory">Default Category</label>
+                <select id="defaultImportCategory">
+                  <option>Groceries</option>
+                  <option>Utilities</option>
+                  <option>Mortgage/Rent</option>
+                  <option>Fuel</option>
+                  <option>Dining</option>
+                  <option>Medical</option>
+                  <option>Kids</option>
+                  <option>Pets</option>
+                  <option>Insurance</option>
+                  <option>Debt</option>
+                  <option>Household</option>
+                  <option>Entertainment</option>
+                  <option>Income</option>
+                  <option>Other</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="footer-note">
+              Use either:
+              <strong>Amount Column</strong> for one signed amount column,
+              or <strong>Debit + Credit</strong> for separate columns.
+            </div>
+
+            <div id="csvSummary" class="banner warnbox hidden" style="margin-top:12px;"></div>
+            <div class="table-wrap" style="margin-top:12px;">
+              <table>
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Preview Date</th>
+                    <th>Preview Merchant</th>
+                    <th>Preview Type</th>
+                    <th>Preview Amount</th>
+                    <th>Preview Category</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody id="csvPreviewBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
       </div>
 
       <div class="grid">
@@ -603,7 +751,7 @@
           <h2>Setup</h2>
           <div class="sub">This file is already pointed at your Supabase project.</div>
           <div class="footer-note">
-            Recurring bills are posted into transactions with duplicate protection. So smashing the button repeatedly like a stressed chimp should not create 97 rent payments.
+            CSV import uses duplicate protection with an import hash, so re-importing the same file should not turn your ledger into a crime scene.
           </div>
         </div>
       </div>
@@ -623,6 +771,10 @@
     let isOwner = false;
     let realtimeChannel = null;
 
+    let csvHeaders = [];
+    let csvRows = [];
+    let csvPreviewRows = [];
+
     const el = (id) => document.getElementById(id);
 
     const authCard = el("authCard");
@@ -633,6 +785,9 @@
     const recurringList = el("recurringList");
     const budgetEditorWrap = el("budgetEditorWrap");
     const budgetReadOnlyNote = el("budgetReadOnlyNote");
+    const csvMapperWrap = el("csvMapperWrap");
+    const csvPreviewBody = el("csvPreviewBody");
+    const csvSummary = el("csvSummary");
 
     function nowMonth() {
       const d = new Date();
@@ -678,6 +833,7 @@
       el("filterMonth").value = nowMonth();
       el("budgetMonth").value = nowMonth();
       el("rbMonthToPost").value = nowMonth();
+      el("csvBudgetMonth").value = nowMonth();
     }
 
     function resetTxnForm() {
@@ -706,6 +862,17 @@
       el("rbNotes").value = "";
       delete el("saveRecurringBtn").dataset.editId;
       el("saveRecurringBtn").textContent = "Save Recurring Bill";
+    }
+
+    function resetCsvState() {
+      csvHeaders = [];
+      csvRows = [];
+      csvPreviewRows = [];
+      el("csvFile").value = "";
+      csvMapperWrap.classList.add("hidden");
+      csvPreviewBody.innerHTML = "";
+      csvSummary.classList.add("hidden");
+      csvSummary.textContent = "";
     }
 
     function setButtonBusy(id, busy, textWhenBusy = "Working...") {
@@ -739,6 +906,367 @@
       const maxDay = daysInMonth(year, month);
       const safeDay = Math.min(Number(day), maxDay);
       return `${year}-${String(month).padStart(2, "0")}-${String(safeDay).padStart(2, "0")}`;
+    }
+
+    function normalizeHeaderName(name) {
+      return String(name || "").trim().toLowerCase();
+    }
+
+    function guessHeader(headers, candidates) {
+      const normalized = headers.map(h => ({ raw: h, norm: normalizeHeaderName(h) }));
+      for (const candidate of candidates) {
+        const found = normalized.find(h => h.norm.includes(candidate));
+        if (found) return found.raw;
+      }
+      return "";
+    }
+
+    function fillSelectOptions(selectId, headers, includeBlank = true) {
+      const select = el(selectId);
+      const options = [];
+      if (includeBlank) options.push(`<option value="">-- none --</option>`);
+      for (const h of headers) {
+        options.push(`<option value="${escapeHtml(h)}">${escapeHtml(h)}</option>`);
+      }
+      select.innerHTML = options.join("");
+    }
+
+    function simpleHash(str) {
+      let hash = 0;
+      const s = String(str);
+      for (let i = 0; i < s.length; i++) {
+        hash = ((hash << 5) - hash) + s.charCodeAt(i);
+        hash |= 0;
+      }
+      return `h${Math.abs(hash)}`;
+    }
+
+    function parseCsvText(text) {
+      const rows = [];
+      let row = [];
+      let field = "";
+      let inQuotes = false;
+
+      for (let i = 0; i < text.length; i++) {
+        const char = text[i];
+        const next = text[i + 1];
+
+        if (char === '"') {
+          if (inQuotes && next === '"') {
+            field += '"';
+            i++;
+          } else {
+            inQuotes = !inQuotes;
+          }
+        } else if (char === ',' && !inQuotes) {
+          row.push(field);
+          field = "";
+        } else if ((char === '\n' || char === '\r') && !inQuotes) {
+          if (char === '\r' && next === '\n') i++;
+          row.push(field);
+          if (row.some(v => String(v).trim() !== "")) rows.push(row);
+          row = [];
+          field = "";
+        } else {
+          field += char;
+        }
+      }
+
+      row.push(field);
+      if (row.some(v => String(v).trim() !== "")) rows.push(row);
+
+      if (!rows.length) return { headers: [], rows: [] };
+
+      const headers = rows[0].map(h => String(h).trim());
+      const dataRows = rows.slice(1).map(r => {
+        const obj = {};
+        headers.forEach((h, idx) => {
+          obj[h] = String(r[idx] ?? "").trim();
+        });
+        return obj;
+      });
+
+      return { headers, rows: dataRows };
+    }
+
+    function parseMoney(value) {
+      const cleaned = String(value || "")
+        .replace(/\$/g, "")
+        .replace(/,/g, "")
+        .replace(/\(/g, "-")
+        .replace(/\)/g, "")
+        .trim();
+
+      if (!cleaned) return 0;
+      const num = Number(cleaned);
+      return Number.isFinite(num) ? num : 0;
+    }
+
+    function parseDateValue(raw, mode = "auto") {
+      const v = String(raw || "").trim();
+      if (!v) return "";
+
+      if (/^\d{4}-\d{2}-\d{2}$/.test(v)) return v;
+
+      const slash = v.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
+      if (slash) {
+        let a = Number(slash[1]);
+        let b = Number(slash[2]);
+        let y = Number(slash[3]);
+        if (y < 100) y += 2000;
+
+        let month, day;
+        if (mode === "dmy") {
+          day = a; month = b;
+        } else {
+          month = a; day = b;
+        }
+
+        if (mode === "auto") {
+          month = a;
+          day = b;
+        }
+
+        if (month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+          return `${y}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+        }
+      }
+
+      const dash = v.match(/^(\d{1,2})-(\d{1,2})-(\d{2,4})$/);
+      if (dash) {
+        let a = Number(dash[1]);
+        let b = Number(dash[2]);
+        let y = Number(dash[3]);
+        if (y < 100) y += 2000;
+
+        let month, day;
+        if (mode === "dmy") {
+          day = a; month = b;
+        } else {
+          month = a; day = b;
+        }
+
+        if (month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+          return `${y}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+        }
+      }
+
+      const dateObj = new Date(v);
+      if (!Number.isNaN(dateObj.getTime())) {
+        return `${dateObj.getFullYear()}-${String(dateObj.getMonth()+1).padStart(2,"0")}-${String(dateObj.getDate()).padStart(2,"0")}`;
+      }
+
+      return "";
+    }
+
+    function buildImportHash(row) {
+      return simpleHash([
+        row.txn_date,
+        row.txn_type,
+        row.merchant,
+        Number(row.amount || 0).toFixed(2),
+        row.budget_month
+      ].join("|"));
+    }
+
+    function buildPreviewRows() {
+      const dateCol = el("mapDate").value;
+      const merchantCol = el("mapMerchant").value;
+      const amountCol = el("mapAmount").value;
+      const debitCol = el("mapDebit").value;
+      const creditCol = el("mapCredit").value;
+      const categoryCol = el("mapCategory").value;
+      const typeMode = el("mapTypeMode").value;
+      const dateMode = el("mapDateFormat").value;
+      const budgetMonth = el("csvBudgetMonth").value || nowMonth();
+      const defaultCategory = el("defaultImportCategory").value;
+
+      csvPreviewRows = csvRows.map((row, idx) => {
+        const parsedDate = parseDateValue(row[dateCol], dateMode);
+        const merchant = String(row[merchantCol] || "").trim();
+        let txnType = "expense";
+        let amount = 0;
+
+        if (typeMode === "debit-credit") {
+          const debit = parseMoney(row[debitCol]);
+          const credit = parseMoney(row[creditCol]);
+
+          if (credit > 0 && debit === 0) {
+            txnType = "income";
+            amount = credit;
+          } else {
+            txnType = "expense";
+            amount = debit > 0 ? debit : Math.abs(credit);
+          }
+        } else {
+          const signed = parseMoney(row[amountCol]);
+          txnType = signed < 0 ? "expense" : "income";
+          amount = Math.abs(signed);
+        }
+
+        let category = defaultCategory;
+        if (categoryCol && String(row[categoryCol] || "").trim()) {
+          category = String(row[categoryCol]).trim();
+        }
+
+        const preview = {
+          index: idx,
+          txn_date: parsedDate,
+          txn_type: txnType,
+          merchant,
+          amount,
+          category,
+          budget_month: budgetMonth,
+          recurring: false,
+          created_by: currentUser?.email || null
+        };
+
+        preview.import_hash = buildImportHash(preview);
+
+        let status = "Ready";
+        if (!preview.txn_date) status = "Bad date";
+        else if (!preview.merchant) status = "Missing description";
+        else if (!preview.amount) status = "Missing amount";
+
+        preview.status = status;
+        return preview;
+      });
+
+      renderCsvPreview();
+    }
+
+    function renderCsvPreview() {
+      if (!csvPreviewRows.length) {
+        csvPreviewBody.innerHTML = `<tr><td colspan="7" class="empty">No preview rows.</td></tr>`;
+        csvSummary.classList.add("hidden");
+        return;
+      }
+
+      const badRows = csvPreviewRows.filter(r => r.status !== "Ready").length;
+      const readyRows = csvPreviewRows.filter(r => r.status === "Ready").length;
+
+      csvSummary.textContent = `Parsed ${csvPreviewRows.length} row(s). Ready: ${readyRows}. Needs attention: ${badRows}.`;
+      csvSummary.classList.remove("hidden");
+
+      const previewSlice = csvPreviewRows.slice(0, 25);
+
+      csvPreviewBody.innerHTML = previewSlice.map((r, i) => `
+        <tr>
+          <td>${i + 1}</td>
+          <td>${escapeHtml(r.txn_date || "")}</td>
+          <td>${escapeHtml(r.merchant || "")}</td>
+          <td>${escapeHtml(r.txn_type || "")}</td>
+          <td>${fmtMoney(r.amount || 0)}</td>
+          <td>${escapeHtml(r.category || "")}</td>
+          <td>${escapeHtml(r.status)}</td>
+        </tr>
+      `).join("");
+    }
+
+    async function parseCsvFile() {
+      try {
+        setButtonBusy("parseCsvBtn", true, "Loading...");
+        const file = el("csvFile").files[0];
+        if (!file) {
+          showBanner("Choose a CSV file first.", "error");
+          return;
+        }
+
+        const text = await file.text();
+        const parsed = parseCsvText(text);
+
+        if (!parsed.headers.length || !parsed.rows.length) {
+          showBanner("CSV appears empty or invalid.", "error");
+          return;
+        }
+
+        csvHeaders = parsed.headers;
+        csvRows = parsed.rows;
+
+        fillSelectOptions("mapDate", csvHeaders, true);
+        fillSelectOptions("mapMerchant", csvHeaders, true);
+        fillSelectOptions("mapAmount", csvHeaders, true);
+        fillSelectOptions("mapDebit", csvHeaders, true);
+        fillSelectOptions("mapCredit", csvHeaders, true);
+        fillSelectOptions("mapCategory", csvHeaders, true);
+
+        el("mapDate").value = guessHeader(csvHeaders, ["date", "posted", "transaction date"]);
+        el("mapMerchant").value = guessHeader(csvHeaders, ["description", "merchant", "details", "name"]);
+        el("mapAmount").value = guessHeader(csvHeaders, ["amount"]);
+        el("mapDebit").value = guessHeader(csvHeaders, ["debit", "withdrawal"]);
+        el("mapCredit").value = guessHeader(csvHeaders, ["credit", "deposit"]);
+        el("mapCategory").value = guessHeader(csvHeaders, ["category"]);
+
+        if (el("mapDebit").value || el("mapCredit").value) {
+          el("mapTypeMode").value = "debit-credit";
+        } else {
+          el("mapTypeMode").value = "auto-amount";
+        }
+
+        csvMapperWrap.classList.remove("hidden");
+        buildPreviewRows();
+        showBanner(`CSV loaded. ${csvRows.length} row(s) parsed.`, "ok");
+      } catch (err) {
+        showBanner(`CSV load failed:\n${err.message || err}`, "error", true);
+      } finally {
+        setButtonBusy("parseCsvBtn", false);
+      }
+    }
+
+    async function importCsvRows() {
+      try {
+        setButtonBusy("importCsvBtn", true, "Importing...");
+        if (!csvPreviewRows.length) {
+          showBanner("Load and preview a CSV first.", "error");
+          return;
+        }
+
+        buildPreviewRows();
+        const readyRows = csvPreviewRows.filter(r => r.status === "Ready");
+
+        if (!readyRows.length) {
+          showBanner("No valid CSV rows are ready to import.", "error");
+          return;
+        }
+
+        const hashes = readyRows.map(r => r.import_hash);
+        const { data: existing, error: existingErr } = await sb
+          .from("budget_transactions")
+          .select("import_hash")
+          .in("import_hash", hashes);
+
+        if (existingErr) throw existingErr;
+
+        const existingHashes = new Set((existing || []).map(r => r.import_hash));
+        const rowsToInsert = readyRows
+          .filter(r => !existingHashes.has(r.import_hash))
+          .map(r => ({
+            txn_date: r.txn_date,
+            txn_type: r.txn_type,
+            merchant: r.merchant,
+            amount: Number(r.amount || 0),
+            category: r.category,
+            budget_month: r.budget_month,
+            recurring: false,
+            created_by: currentUser?.email || null,
+            import_hash: r.import_hash
+          }));
+
+        if (!rowsToInsert.length) {
+          showBanner("Everything in that CSV appears to be already imported. Duplicate protection did its job.", "warnbox");
+          return;
+        }
+
+        const { error } = await sb.from("budget_transactions").insert(rowsToInsert);
+        if (error) throw error;
+
+        showBanner(`Imported ${rowsToInsert.length} CSV row(s).`, "ok");
+        resetCsvState();
+      } catch (err) {
+        showBanner(`CSV import failed:\n${err.message || err}`, "error", true);
+      } finally {
+        setButtonBusy("importCsvBtn", false);
+      }
     }
 
     async function login() {
@@ -1072,7 +1600,7 @@
           }));
 
         if (!rowsToInsert.length) {
-          showBanner("No new recurring bills to post for that month. Duplicate protection did its job. How rude.", "warnbox");
+          showBanner("No new recurring bills to post for that month. Duplicate protection did its job.", "warnbox");
           return;
         }
 
@@ -1118,6 +1646,7 @@
               </div>
               <div class="actions">
                 ${t.recurring ? '<span class="tag">🔁 Recurring</span>' : ''}
+                ${t.import_hash ? '<span class="tag">📄 Imported</span>' : ''}
               </div>
             </div>
             <div class="amount ${t.txn_type}">${t.txn_type === "income" ? "+" : "-"}${fmtMoney(t.amount)}</div>
@@ -1270,6 +1799,15 @@
       });
     }
 
+    function bindCsvMappingEvents() {
+      ["mapDate","mapMerchant","mapAmount","mapDebit","mapCredit","mapCategory","mapTypeMode","mapDateFormat","defaultImportCategory","csvBudgetMonth"]
+        .forEach(id => {
+          el(id).addEventListener("change", () => {
+            if (csvRows.length) buildPreviewRows();
+          });
+        });
+    }
+
     function bindEvents() {
       el("loginBtn").addEventListener("click", login);
       el("signupBtn").addEventListener("click", signup);
@@ -1282,6 +1820,10 @@
       el("postRecurringBtn").addEventListener("click", postRecurringBillsForMonth);
       el("reloadRecurringBtn").addEventListener("click", loadRecurringBills);
 
+      el("parseCsvBtn").addEventListener("click", parseCsvFile);
+      el("importCsvBtn").addEventListener("click", importCsvRows);
+      el("clearCsvBtn").addEventListener("click", resetCsvState);
+
       el("filterMonth").addEventListener("change", () => {
         renderTransactions();
         renderTotals();
@@ -1290,6 +1832,8 @@
       el("filterType").addEventListener("change", renderTransactions);
       el("filterCategory").addEventListener("change", renderTransactions);
       el("budgetMonth").addEventListener("change", renderBudgets);
+
+      bindCsvMappingEvents();
     }
 
     async function boot() {
@@ -1326,6 +1870,7 @@
         resetTxnForm();
         resetBudgetForm();
         resetRecurringForm();
+        resetCsvState();
         await restoreExistingSession();
       } catch (err) {
         showBanner(`Startup failed:\n${err.message || err}`, "error", true);
