@@ -125,7 +125,7 @@
       border-color: var(--accent);
     }
 
-    input:disabled, select:disabled {
+    input:disabled, select:disabled, button:disabled {
       opacity: .65;
       cursor: not-allowed;
     }
@@ -252,6 +252,8 @@
       border: 1px solid var(--line);
       background: rgba(255,255,255,.04);
       color: var(--text);
+      white-space: pre-wrap;
+      word-break: break-word;
     }
 
     .error {
@@ -262,6 +264,11 @@
     .ok {
       border-color: rgba(34,197,94,.4);
       background: rgba(34,197,94,.08);
+    }
+
+    .warnbox {
+      border-color: rgba(251,191,36,.45);
+      background: rgba(251,191,36,.08);
     }
 
     .read-only-note {
@@ -308,8 +315,8 @@
         </div>
       </div>
       <div class="actions">
-        <button class="btn" id="loginBtn">Log In</button>
-        <button class="btn secondary" id="signupBtn">Sign Up</button>
+        <button class="btn" id="loginBtn" type="button">Log In</button>
+        <button class="btn secondary" id="signupBtn" type="button">Sign Up</button>
       </div>
       <div class="footer-note">Create exactly two accounts in Supabase Auth and invite the second user like civilized adults instead of sharing one password like raccoons.</div>
     </section>
@@ -322,7 +329,7 @@
               <h2 style="margin:0;">Dashboard</h2>
               <div class="sub" id="whoami">Signed in</div>
             </div>
-            <button class="btn secondary" id="logoutBtn">Log Out</button>
+            <button class="btn secondary" id="logoutBtn" type="button">Log Out</button>
           </div>
           <div class="totals">
             <div class="metric"><div class="k">Income</div><div class="v" id="incomeTotal">$0.00</div></div>
@@ -390,8 +397,8 @@
             </div>
           </div>
           <div class="actions">
-            <button class="btn good" id="saveTxnBtn">Save Transaction</button>
-            <button class="btn secondary" id="resetTxnBtn">Clear</button>
+            <button class="btn good" id="saveTxnBtn" type="button">Save Transaction</button>
+            <button class="btn secondary" id="resetTxnBtn" type="button">Clear</button>
           </div>
         </div>
 
@@ -432,7 +439,7 @@
             </div>
             <div>
               <label>&nbsp;</label>
-              <button class="btn secondary" id="clearFiltersBtn" style="width:100%;">Clear Filters</button>
+              <button class="btn secondary" id="clearFiltersBtn" style="width:100%;" type="button">Clear Filters</button>
             </div>
           </div>
           <div id="txnList" class="list"></div>
@@ -475,7 +482,7 @@
                 <input id="budgetAmount" type="number" step="0.01" placeholder="0.00" />
               </div>
               <div style="display:flex; align-items:end;">
-                <button class="btn good" id="saveBudgetBtn" style="width:100%;">Save Target</button>
+                <button class="btn good" id="saveBudgetBtn" style="width:100%;" type="button">Save Target</button>
               </div>
             </div>
           </div>
@@ -489,9 +496,9 @@
 
         <div class="card">
           <h2>Setup</h2>
-          <div class="sub">This file is already pointed at your Supabase project. If you ever rotate keys, update them here.</div>
+          <div class="sub">This file is already pointed at your Supabase project.</div>
           <div class="footer-note">
-            Also make sure your Supabase RLS policies match the owner-only budget target rules, or the app will look smart while the database behaves like a drunk bouncer.
+            If anything blows up, the error will now show in the banner instead of silently dying like a witness in a mob movie.
           </div>
         </div>
       </div>
@@ -503,8 +510,12 @@
     const SUPABASE_ANON_KEY = "sb_publishable_7QVjXsUdKnAiwp9uJcNTpQ_fHfHCBuh";
     const OWNER_EMAIL = "k.yarbro@outlook.com";
 
-    const { createClient } = supabase;
-    const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    let sb = null;
+    let currentUser = null;
+    let transactions = [];
+    let budgets = [];
+    let isOwner = false;
+    let realtimeChannel = null;
 
     const el = (id) => document.getElementById(id);
 
@@ -515,11 +526,6 @@
     const budgetList = el("budgetList");
     const budgetEditorWrap = el("budgetEditorWrap");
     const budgetReadOnlyNote = el("budgetReadOnlyNote");
-
-    let currentUser = null;
-    let transactions = [];
-    let budgets = [];
-    let isOwner = false;
 
     function nowMonth() {
       const d = new Date();
@@ -541,11 +547,22 @@
       return v.toLocaleString(undefined, { style: "currency", currency: "USD" });
     }
 
-    function showBanner(msg, type = "ok") {
-      banner.textContent = msg;
+    function showBanner(msg, type = "ok", persist = false) {
+      banner.textContent = String(msg || "");
       banner.className = `banner ${type}`;
       banner.classList.remove("hidden");
-      setTimeout(() => banner.classList.add("hidden"), 3800);
+      if (!persist) {
+        setTimeout(() => banner.classList.add("hidden"), 5000);
+      }
+    }
+
+    function escapeHtml(str) {
+      return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
     }
 
     function setDefaults() {
@@ -571,116 +588,200 @@
       el("budgetAmount").value = "";
     }
 
-    function escapeHtml(str) {
-      return String(str)
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#039;");
+    function setButtonBusy(id, busy, textWhenBusy = "Working...") {
+      const button = el(id);
+      if (!button) return;
+      if (!button.dataset.originalText) {
+        button.dataset.originalText = button.textContent;
+      }
+      button.disabled = busy;
+      button.textContent = busy ? textWhenBusy : button.dataset.originalText;
+    }
+
+    function applyOwnerUI() {
+      if (isOwner) {
+        budgetEditorWrap.classList.remove("hidden");
+        budgetReadOnlyNote.classList.add("hidden");
+      } else {
+        budgetEditorWrap.classList.add("hidden");
+        budgetReadOnlyNote.classList.remove("hidden");
+      }
+    }
+
+    async function safeAuthGetUser() {
+      try {
+        const { data, error } = await sb.auth.getUser();
+        if (error) throw error;
+        return data?.user || null;
+      } catch (err) {
+        showBanner(`Auth check failed:\n${err.message || err}`, "error", true);
+        return null;
+      }
     }
 
     async function login() {
-      const email = el("authEmail").value.trim();
-      const password = el("authPassword").value;
-      const { error } = await sb.auth.signInWithPassword({ email, password });
-      if (error) return showBanner(error.message, "error");
-      showBanner("Logged in.", "ok");
+      try {
+        setButtonBusy("loginBtn", true, "Logging In...");
+        const email = el("authEmail").value.trim();
+        const password = el("authPassword").value;
+
+        if (!email || !password) {
+          showBanner("Enter email and password.", "error");
+          return;
+        }
+
+        const { error } = await sb.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+
+        showBanner("Logged in.", "ok");
+      } catch (err) {
+        showBanner(`Login failed:\n${err.message || err}`, "error", true);
+      } finally {
+        setButtonBusy("loginBtn", false);
+      }
     }
 
     async function signup() {
-      const email = el("authEmail").value.trim();
-      const password = el("authPassword").value;
-      const { error } = await sb.auth.signUp({ email, password });
-      if (error) return showBanner(error.message, "error");
-      showBanner("Account created. Check email if your project requires confirmation.", "ok");
+      try {
+        setButtonBusy("signupBtn", true, "Creating...");
+        const email = el("authEmail").value.trim();
+        const password = el("authPassword").value;
+
+        if (!email || !password) {
+          showBanner("Enter email and password.", "error");
+          return;
+        }
+
+        const { error } = await sb.auth.signUp({ email, password });
+        if (error) throw error;
+
+        showBanner("Account created. Check email if confirmation is enabled.", "ok");
+      } catch (err) {
+        showBanner(`Sign up failed:\n${err.message || err}`, "error", true);
+      } finally {
+        setButtonBusy("signupBtn", false);
+      }
     }
 
     async function logout() {
-      await sb.auth.signOut();
+      try {
+        await sb.auth.signOut();
+        showBanner("Logged out.", "ok");
+      } catch (err) {
+        showBanner(`Logout failed:\n${err.message || err}`, "error", true);
+      }
     }
 
     async function saveTransaction() {
-      const payload = {
-        txn_date: el("txnDate").value,
-        txn_type: el("txnType").value,
-        merchant: el("txnMerchant").value.trim(),
-        amount: Number(el("txnAmount").value || 0),
-        category: el("txnCategory").value,
-        budget_month: el("txnMonth").value,
-        recurring: el("txnRecurring").value === "true",
-        created_by: currentUser?.email || null,
-      };
+      try {
+        setButtonBusy("saveTxnBtn", true, "Saving...");
+        const payload = {
+          txn_date: el("txnDate").value,
+          txn_type: el("txnType").value,
+          merchant: el("txnMerchant").value.trim(),
+          amount: Number(el("txnAmount").value || 0),
+          category: el("txnCategory").value,
+          budget_month: el("txnMonth").value,
+          recurring: el("txnRecurring").value === "true",
+          created_by: currentUser?.email || null,
+        };
 
-      if (!payload.txn_date || !payload.merchant || !payload.amount || !payload.budget_month) {
-        return showBanner("Fill in date, merchant/source, amount, and month.", "error");
+        if (!payload.txn_date || !payload.merchant || !payload.amount || !payload.budget_month) {
+          showBanner("Fill in date, merchant/source, amount, and month.", "error");
+          return;
+        }
+
+        const { error } = await sb.from("budget_transactions").insert(payload);
+        if (error) throw error;
+
+        resetTxnForm();
+        showBanner("Transaction saved.", "ok");
+      } catch (err) {
+        showBanner(`Save transaction failed:\n${err.message || err}`, "error", true);
+      } finally {
+        setButtonBusy("saveTxnBtn", false);
       }
-
-      const { error } = await sb.from("budget_transactions").insert(payload);
-      if (error) return showBanner(error.message, "error");
-
-      resetTxnForm();
-      showBanner("Transaction saved.", "ok");
     }
 
     async function deleteTransaction(id) {
-      const { error } = await sb.from("budget_transactions").delete().eq("id", id);
-      if (error) return showBanner(error.message, "error");
-      showBanner("Transaction deleted.", "ok");
+      try {
+        const { error } = await sb.from("budget_transactions").delete().eq("id", id);
+        if (error) throw error;
+        showBanner("Transaction deleted.", "ok");
+      } catch (err) {
+        showBanner(`Delete transaction failed:\n${err.message || err}`, "error", true);
+      }
     }
 
     async function saveBudget() {
-      if (!isOwner) {
-        return showBanner("Only the owner can change budget targets.", "error");
-      }
+      try {
+        setButtonBusy("saveBudgetBtn", true, "Saving...");
+        if (!isOwner) {
+          showBanner("Only the owner can change budget targets.", "error");
+          return;
+        }
 
-      const payload = {
-        budget_month: el("budgetMonth").value,
-        category: el("budgetCategory").value,
-        target_amount: Number(el("budgetAmount").value || 0),
-        created_by: currentUser?.email || null,
-      };
+        const payload = {
+          budget_month: el("budgetMonth").value,
+          category: el("budgetCategory").value,
+          target_amount: Number(el("budgetAmount").value || 0),
+          created_by: currentUser?.email || null,
+        };
 
-      if (!payload.budget_month || !payload.category || !payload.target_amount) {
-        return showBanner("Fill in month, category, and amount.", "error");
-      }
+        if (!payload.budget_month || !payload.category || !payload.target_amount) {
+          showBanner("Fill in month, category, and amount.", "error");
+          return;
+        }
 
-      const { data: existing, error: findErr } = await sb
-        .from("budget_targets")
-        .select("id")
-        .eq("budget_month", payload.budget_month)
-        .eq("category", payload.category)
-        .maybeSingle();
-
-      if (findErr) return showBanner(findErr.message, "error");
-
-      let error;
-      if (existing?.id) {
-        ({ error } = await sb
+        const { data: existing, error: findErr } = await sb
           .from("budget_targets")
-          .update({
-            target_amount: payload.target_amount,
-            created_by: payload.created_by
-          })
-          .eq("id", existing.id));
-      } else {
-        ({ error } = await sb.from("budget_targets").insert(payload));
+          .select("id")
+          .eq("budget_month", payload.budget_month)
+          .eq("category", payload.category)
+          .maybeSingle();
+
+        if (findErr) throw findErr;
+
+        let writeError = null;
+
+        if (existing?.id) {
+          const { error } = await sb
+            .from("budget_targets")
+            .update({
+              target_amount: payload.target_amount,
+              created_by: payload.created_by
+            })
+            .eq("id", existing.id);
+          writeError = error;
+        } else {
+          const { error } = await sb.from("budget_targets").insert(payload);
+          writeError = error;
+        }
+
+        if (writeError) throw writeError;
+
+        resetBudgetForm();
+        showBanner("Budget target saved.", "ok");
+      } catch (err) {
+        showBanner(`Save budget failed:\n${err.message || err}`, "error", true);
+      } finally {
+        setButtonBusy("saveBudgetBtn", false);
       }
-
-      if (error) return showBanner(error.message, "error");
-
-      el("budgetAmount").value = "";
-      showBanner("Budget target saved.", "ok");
     }
 
     async function deleteBudget(id) {
-      if (!isOwner) {
-        return showBanner("Only the owner can delete budget targets.", "error");
-      }
+      try {
+        if (!isOwner) {
+          showBanner("Only the owner can delete budget targets.", "error");
+          return;
+        }
 
-      const { error } = await sb.from("budget_targets").delete().eq("id", id);
-      if (error) return showBanner(error.message, "error");
-      showBanner("Budget target deleted.", "ok");
+        const { error } = await sb.from("budget_targets").delete().eq("id", id);
+        if (error) throw error;
+        showBanner("Budget target deleted.", "ok");
+      } catch (err) {
+        showBanner(`Delete budget failed:\n${err.message || err}`, "error", true);
+      }
     }
 
     async function loadTransactions() {
@@ -690,7 +791,7 @@
         .order("txn_date", { ascending: false })
         .order("created_at", { ascending: false });
 
-      if (error) return showBanner(error.message, "error");
+      if (error) throw error;
 
       transactions = data || [];
       renderTransactions();
@@ -704,7 +805,7 @@
         .order("budget_month", { ascending: false })
         .order("category", { ascending: true });
 
-      if (error) return showBanner(error.message, "error");
+      if (error) throw error;
 
       budgets = data || [];
       renderBudgets();
@@ -715,7 +816,7 @@
       const type = el("filterType").value;
       const category = el("filterCategory").value;
 
-      return transactions.filter(t => {
+      return transactions.filter((t) => {
         const okMonth = !month || t.budget_month === month;
         const okType = type === "all" ? true : t.txn_type === type;
         const okCategory = category === "all" ? true : t.category === category;
@@ -731,7 +832,7 @@
         return;
       }
 
-      txnList.innerHTML = rows.map(t => `
+      txnList.innerHTML = rows.map((t) => `
         <div class="txn">
           <div class="txn-top">
             <div>
@@ -741,7 +842,7 @@
             <div class="amount ${t.txn_type}">${t.txn_type === "income" ? "+" : "-"}${fmtMoney(t.amount)}</div>
           </div>
           <div class="actions">
-            <button class="btn danger" onclick="deleteTransaction('${t.id}')">Delete</button>
+            <button class="btn danger" onclick="deleteTransaction('${t.id}')" type="button">Delete</button>
           </div>
         </div>
       `).join("");
@@ -749,7 +850,7 @@
 
     function renderBudgets() {
       const month = el("budgetMonth").value || nowMonth();
-      const monthRows = budgets.filter(b => b.budget_month === month);
+      const monthRows = budgets.filter((b) => b.budget_month === month);
 
       if (!monthRows.length) {
         budgetList.innerHTML = '<div class="empty">No budget targets for this month yet.</div>';
@@ -758,12 +859,12 @@
 
       const spentByCategory = {};
       transactions
-        .filter(t => t.budget_month === month && t.txn_type === "expense")
-        .forEach(t => {
+        .filter((t) => t.budget_month === month && t.txn_type === "expense")
+        .forEach((t) => {
           spentByCategory[t.category] = (spentByCategory[t.category] || 0) + Number(t.amount || 0);
         });
 
-      budgetList.innerHTML = monthRows.map(b => {
+      budgetList.innerHTML = monthRows.map((b) => {
         const spent = Number(spentByCategory[b.category] || 0);
         const remaining = Number(b.target_amount || 0) - spent;
 
@@ -777,7 +878,7 @@
               <div class="amount ${remaining >= 0 ? "income" : "expense"}">${fmtMoney(remaining)}</div>
             </div>
             <div class="actions">
-              ${isOwner ? `<button class="btn danger" onclick="deleteBudget('${b.id}')">Delete</button>` : ""}
+              ${isOwner ? `<button class="btn danger" onclick="deleteBudget('${b.id}')" type="button">Delete</button>` : ""}
             </div>
           </div>
         `;
@@ -786,14 +887,14 @@
 
     function renderTotals() {
       const month = el("filterMonth").value || nowMonth();
-      const monthRows = transactions.filter(t => t.budget_month === month);
+      const monthRows = transactions.filter((t) => t.budget_month === month);
 
       const income = monthRows
-        .filter(t => t.txn_type === "income")
+        .filter((t) => t.txn_type === "income")
         .reduce((s, t) => s + Number(t.amount || 0), 0);
 
       const expenses = monthRows
-        .filter(t => t.txn_type === "expense")
+        .filter((t) => t.txn_type === "expense")
         .reduce((s, t) => s + Number(t.amount || 0), 0);
 
       el("incomeTotal").textContent = fmtMoney(income);
@@ -805,23 +906,16 @@
     }
 
     async function refreshAll() {
-      await loadTransactions();
-      await loadBudgets();
-    }
-
-    function applyOwnerUI() {
-      if (isOwner) {
-        budgetEditorWrap.classList.remove("hidden");
-        budgetReadOnlyNote.classList.add("hidden");
-      } else {
-        budgetEditorWrap.classList.add("hidden");
-        budgetReadOnlyNote.classList.remove("hidden");
+      try {
+        await loadTransactions();
+        await loadBudgets();
+      } catch (err) {
+        showBanner(`Load failed:\n${err.message || err}`, "error", true);
       }
     }
 
     async function setSessionUI() {
-      const { data } = await sb.auth.getUser();
-      currentUser = data?.user || null;
+      currentUser = await safeAuthGetUser();
       isOwner = currentUser?.email === OWNER_EMAIL;
 
       if (currentUser) {
@@ -837,54 +931,89 @@
     }
 
     function bindRealtime() {
-      sb.channel("budget-live")
+      if (realtimeChannel) return;
+
+      realtimeChannel = sb.channel("budget-live")
         .on("postgres_changes", { event: "*", schema: "public", table: "budget_transactions" }, async () => {
-          await loadTransactions();
-          renderBudgets();
+          await refreshAll();
         })
         .on("postgres_changes", { event: "*", schema: "public", table: "budget_targets" }, async () => {
-          await loadBudgets();
-        })
-        .subscribe();
+          await refreshAll();
+        });
+
+      realtimeChannel.subscribe((status) => {
+        if (status === "CHANNEL_ERROR") {
+          showBanner("Realtime channel error. App will still work, just without live updates.", "warnbox");
+        }
+      });
     }
 
-    el("loginBtn").addEventListener("click", login);
-    el("signupBtn").addEventListener("click", signup);
-    el("logoutBtn").addEventListener("click", logout);
-    el("saveTxnBtn").addEventListener("click", saveTransaction);
-    el("resetTxnBtn").addEventListener("click", resetTxnForm);
-    el("saveBudgetBtn").addEventListener("click", saveBudget);
+    function bindEvents() {
+      el("loginBtn").addEventListener("click", login);
+      el("signupBtn").addEventListener("click", signup);
+      el("logoutBtn").addEventListener("click", logout);
+      el("saveTxnBtn").addEventListener("click", saveTransaction);
+      el("resetTxnBtn").addEventListener("click", resetTxnForm);
+      el("saveBudgetBtn").addEventListener("click", saveBudget);
 
-    el("filterMonth").addEventListener("change", () => {
-      renderTransactions();
-      renderTotals();
+      el("filterMonth").addEventListener("change", () => {
+        renderTransactions();
+        renderTotals();
+      });
+
+      el("filterType").addEventListener("change", renderTransactions);
+      el("filterCategory").addEventListener("change", renderTransactions);
+      el("budgetMonth").addEventListener("change", renderBudgets);
+
+      el("clearFiltersBtn").addEventListener("click", () => {
+        el("filterMonth").value = nowMonth();
+        el("filterType").value = "all";
+        el("filterCategory").value = "all";
+        renderTransactions();
+        renderTotals();
+      });
+    }
+
+    async function boot() {
+      try {
+        if (!window.supabase || typeof window.supabase.createClient !== "function") {
+          throw new Error("Supabase library did not load. CDN blocked or failed.");
+        }
+
+        const { createClient } = window.supabase;
+        sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        bindEvents();
+
+        sb.auth.onAuthStateChange(async () => {
+          await setSessionUI();
+        });
+
+        setDefaults();
+        resetTxnForm();
+        resetBudgetForm();
+        bindRealtime();
+        await setSessionUI();
+
+        showBanner("App loaded.", "ok");
+      } catch (err) {
+        showBanner(`Startup failed:\n${err.message || err}`, "error", true);
+      }
+    }
+
+    window.addEventListener("error", (event) => {
+      showBanner(`JavaScript error:\n${event.message}`, "error", true);
     });
 
-    el("filterType").addEventListener("change", renderTransactions);
-    el("filterCategory").addEventListener("change", renderTransactions);
-
-    el("budgetMonth").addEventListener("change", renderBudgets);
-
-    el("clearFiltersBtn").addEventListener("click", () => {
-      el("filterMonth").value = nowMonth();
-      el("filterType").value = "all";
-      el("filterCategory").value = "all";
-      renderTransactions();
-      renderTotals();
+    window.addEventListener("unhandledrejection", (event) => {
+      const msg = event?.reason?.message || event?.reason || "Unknown promise rejection";
+      showBanner(`Unhandled error:\n${msg}`, "error", true);
     });
-
-    sb.auth.onAuthStateChange(async () => {
-      await setSessionUI();
-    });
-
-    setDefaults();
-    resetTxnForm();
-    resetBudgetForm();
-    bindRealtime();
-    setSessionUI();
 
     window.deleteTransaction = deleteTransaction;
     window.deleteBudget = deleteBudget;
+
+    document.addEventListener("DOMContentLoaded", boot);
   </script>
 </body>
 </html>
